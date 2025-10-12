@@ -2,10 +2,11 @@ import math
 import random
 import numpy as np
 from itertools import combinations
+import matplotlib.pyplot as plt
+import pandas as pd
 
 # ---------- Utilities ----------
 def euclidean_round(a, b):
-    # mathematical rounding (half up)
     return int(math.floor(math.hypot(a[0]-b[0], a[1]-b[1]) + 0.5))
 
 def compute_distance_matrix(coords):
@@ -23,7 +24,7 @@ def cycle_length(path, D):
 def total_cost(path, costs, D):
     return cycle_length(path, D) + sum(costs[i] for i in path)
 
-def k_from_n(n): return (n+1)//2  # ceil(n/2)
+def k_from_n(n): return (n+1)//2
 
 # ---------- 1. Random solution ----------
 def random_solution(n, k):
@@ -40,7 +41,6 @@ def nn_end(D, costs, start, k):
     while len(path) < k:
         best_j, best_delta = None, float('inf')
         for j in remaining:
-            # cost of inserting at end
             if len(path) == 1:
                 delta = D[path[-1], j] + D[j, path[0]] + costs[j]
             else:
@@ -59,7 +59,6 @@ def nn_insert_anywhere(D, costs, start, k):
     path = [start]
     remaining = set(range(n)) - {start}
 
-    # second node: choose one minimizing D[start,j]+c_j
     if remaining:
         best_j = min(remaining, key=lambda j: D[start,j] + D[j,start] + costs[j])
         path.append(best_j)
@@ -80,7 +79,6 @@ def nn_insert_anywhere(D, costs, start, k):
 # ---------- 4. Greedy cycle ----------
 def greedy_cycle(D, costs, k):
     n = len(D)
-    # start with edge (i,j) minimizing D[i,j] + c_i + c_j
     best_pair = min(combinations(range(n), 2),
                     key=lambda p: D[p[0], p[1]] + costs[p[0]] + costs[p[1]])
     path = [best_pair[0], best_pair[1]]
@@ -129,10 +127,41 @@ def generate_greedy_solutions(coords, costs, method='random', runs=200):
     else:
         raise ValueError("Unknown method")
 
-    # Return best solution and stats
+    
     best = min(all_solutions, key=lambda x: x[1])
+    maxi = max(all_solutions, key=lambda x: x[1])
+    avg = np.mean([v for _, v in all_solutions])
+    print("method:", method, "best cost:", best[1], "worst cost:", maxi[1], "avg cost:", avg)
+    show_path(best[0], f"Best path ({method}): cost={best[1]:.1f}")
     avg = np.mean([v for _, v in all_solutions])
     return best, avg, all_solutions
+
+def show_path(path: list[int], title):
+    filename = "./TSPA.csv"
+
+    df = pd.read_csv(filename, sep=";", header=0).reset_index(drop=True)
+
+    coords = df.iloc[:, [0, 1]].values
+    costs = df.iloc[:, 2].values
+    sizes = costs / max(costs) * 100  
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=sizes)
+
+    for i, point in enumerate(coords):
+        plt.text(point[0], point[1], str(i), fontsize=9, ha="right")
+
+    path_coords = coords[path + [path[0]]]
+    plt.plot(
+        path_coords[:, 0], path_coords[:, 1], color="red", linestyle="-", marker="o"
+    )
+
+    plt.title(title)
+    plt.xlabel("X Coordinate")
+    plt.ylabel("Y Coordinate")
+    plt.grid(True)
+    plt.show()
+
 
 def import_data(filename):
     coords = []
@@ -148,10 +177,8 @@ def import_data(filename):
             costs.append(int(c))
     return coords, costs
 
-# ---------- Example usage ----------
+
 if __name__ == "__main__":
-    # coords = [(0,0),(10,0),(10,10),(0,10),(5,5),(20,20),(15,0)]
-    # costs = [5,2,3,2,10,1,8]
     coords, costs = import_data('TSPA.csv')
 
     for method in ['random', 'nn_end', 'nn_anywhere', 'greedy_cycle']:
