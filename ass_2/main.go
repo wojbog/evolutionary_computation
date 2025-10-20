@@ -53,10 +53,14 @@ func main() {
 	methods := []string{"regret", "weighted"}
 
 	var bestResults []Solution
+
 	for _, m := range methods {
 		fmt.Printf("Running method: %s ...\n", m)
 		count := min(*maxRuns, n)
 		bestSol := Solution{Obj: math.MaxInt}
+
+		var allObjs []int // track all objective values
+
 		for start := 0; start < count; start++ {
 			var sol Solution
 			switch m {
@@ -68,11 +72,18 @@ func main() {
 				sol.Method = fmt.Sprintf("Weighted (α=%.2f,β=%.2f)", *alpha, *beta)
 			}
 			sol.StartNode = start
+			allObjs = append(allObjs, sol.Obj)
+
 			if sol.Obj < bestSol.Obj {
 				bestSol = sol
 			}
 		}
-		fmt.Printf(" → Best objective for %s: %d (start %d)\n", bestSol.Method, bestSol.Obj, bestSol.StartNode)
+
+		// Compute statistics
+		worst, avg := stats(allObjs)
+		fmt.Printf(" → Best objective: %d (start %d)\n", bestSol.Obj, bestSol.StartNode)
+		fmt.Printf(" → Average objective: %.2f, Worst objective: %d\n\n", avg, worst)
+
 		bestResults = append(bestResults, bestSol)
 	}
 
@@ -80,6 +91,7 @@ func main() {
 		log.Fatalf("failed writing results: %v", err)
 	}
 }
+
 
 func readNodesCSV(path string) ([]Node, error) {
 	f, err := os.Open(path)
@@ -111,6 +123,23 @@ func readNodesCSV(path string) ([]Node, error) {
 	}
 	return nodes, nil
 }
+
+func stats(values []int) (worst int, avg float64) {
+	if len(values) == 0 {
+		return 0, 0
+	}
+	sum := 0
+	worst = values[0]
+	for _, v := range values {
+		sum += v
+		if v > worst {
+			worst = v
+		}
+	}
+	avg = float64(sum) / float64(len(values))
+	return
+}
+
 
 func writeResultsCSV(path string, sols []Solution) error {
 	f, err := os.Create(path)
