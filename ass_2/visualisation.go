@@ -42,7 +42,7 @@ func getMaxCoordinates(points []Point) rl.Vector2 {
 	return rl.Vector2{X: maxX, Y: maxY}
 }
 
-func drawPath(path []uint32, points []Point, outputFile string, display bool) {
+func drawPath(path []uint32, points []Point, outputFile string, title string, display bool) {
 	var maxWindowSize int32 = 1512
 
 	var margin float32 = 64.0
@@ -106,6 +106,8 @@ func drawPath(path []uint32, points []Point, outputFile string, display bool) {
 
 	rl.ClearBackground(rl.RayWhite)
 
+	rl.DrawText(title, 10, 10, 20, rl.DarkGray)
+
 	for i, position := range scaledPositions {
 		cirlceSize := minCircleSize + (float32(costs[i])/float32(maxCost))*(maxCircleSize-minCircleSize)
 		rl.DrawCircleV(position, cirlceSize, rl.Blue)
@@ -165,19 +167,44 @@ func parsePathString(pathString string) ([]uint32, error) {
 	return path, nil
 }
 
-func getPathFromCSV(filename string) ([]uint32, error) {
+type Result struct {
+	name       string
+	objective  uint64
+	pathLength uint64
+	totalCost  uint64
+	path       []uint32
+}
+
+func getPathFromCSV(filename string) ([]Result, error) {
 	records, err := readCSV(filename, ',')
 	if err != nil {
 		return nil, fmt.Errorf("Error reading CSV file: %v", err)
 	}
 
-	pathString := records[1][len(records[1])-1]
-	path, err := parsePathString(pathString)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing path string: %v", err)
+	results := make([]Result, 0, len(records)-1)
+
+	for _, rec := range records[1:] {
+		name := rec[0]
+		objective, err1 := strconv.ParseUint(rec[2], 10, 64)
+		pathLength, err2 := strconv.ParseUint(rec[3], 10, 64)
+		totalCost, err3 := strconv.ParseUint(rec[4], 10, 64)
+
+		pathString := rec[6]
+		path, err4 := parsePathString(pathString)
+		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+			return nil, fmt.Errorf("Error parsing record fields: %v %v %v %v", err1, err2, err3, err4)
+		}
+
+		results = append(results, Result{
+			name:       name,
+			objective:  objective,
+			pathLength: pathLength,
+			totalCost:  totalCost,
+			path:       path,
+		})
 	}
 
-	return path, nil
+	return results, nil
 }
 
 type Point struct {
@@ -208,24 +235,41 @@ func getPointsFromCSV(filename string) ([]Point, error) {
 }
 
 func main() {
-	filename_pathA := "ass_2/best_A.csv"
-	path, err := getPathFromCSV(filename_pathA)
-	if err != nil {
-		fmt.Printf("Error parsing path string: %v", err)
-		return
-	}
 	filename_pointsA := "./TSPA.csv"
 	points, err := getPointsFromCSV(filename_pointsA)
-	drawPath(path, points, "ass_2/tspa.png", true)
+	if err != nil {
+		fmt.Printf("Error parsing points: %v", err)
+		return
+	}
 
-	filename_pathB := "ass_2/best_B.csv"
-	path, err = getPathFromCSV(filename_pathB)
+	filename_pathA := "ass_2/best_A.csv"
+	results, err := getPathFromCSV(filename_pathA)
 	if err != nil {
 		fmt.Printf("Error parsing path string: %v", err)
 		return
 	}
-	filename_pointsA = "./TSPB.csv"
-	points, err = getPointsFromCSV(filename_pointsA)
-	drawPath(path, points, "ass_2/tspb.png", true)
+	for _, result := range results {
+		title := fmt.Sprintf("A: %v - Objective: %v (Distance: %v Cost: %v)", result.name, result.objective, result.pathLength, result.totalCost)
+		outpath := fmt.Sprintf("ass_2/TSPA_%v.png", result.name)
+		drawPath(result.path, points, outpath, title, true)
+	}
 
+	filename_pointsB := "./TSPB.csv"
+	points, err = getPointsFromCSV(filename_pointsB)
+	if err != nil {
+		fmt.Printf("Error parsing points: %v", err)
+		return
+	}
+
+	filename_pathB := "ass_2/best_B.csv"
+	results, err = getPathFromCSV(filename_pathB)
+	if err != nil {
+		fmt.Printf("Error parsing path string: %v", err)
+		return
+	}
+	for _, result := range results {
+		title := fmt.Sprintf("B: %v - Objective: %v (Distance: %v Cost: %v)", result.name, result.objective, result.pathLength, result.totalCost)
+		outpath := fmt.Sprintf("ass_2/TSPB_%v.png", result.name)
+		drawPath(result.path, points, outpath, title, true)
+	}
 }
