@@ -1,3 +1,5 @@
+_Link to the source code: [GitHub Repository](https://github.com/wojbog/evolutionary_computation)_
+
 # Problem Description
 The problem considered in this project involves a set of nodes, each represented by three
 integer values: two coordinates (x,y)(x, y)(x,y) that define the node’s position in a
@@ -13,10 +15,10 @@ nearest integer.
 
 # Implemented Algorithms
 ## Greedy Heuristics with a Weighted Sum Criterion
-![Greedy-heuristics-with-a-weighted-sum-criterion](Greedy-heuristics-with-a-weighted-sum-criterion.png)
+![](Greedy-heuristics-with-a-weighted-sum-criterion.png)
 
 ## 2-Regret Insertion Heuristic
-![Greedy-2-regret-heuristics](Greedy-2-regret-heuristics.png)
+![](Greedy-2-regret-heuristics.png)
 
 # Results
 
@@ -53,3 +55,6 @@ nearest integer.
 | NN - End                                 |                |              |                   |
 | NN - Anywhere                                 |                |              |                   |
 | Greedy Cycle                                 |                |              |                   |
+
+
+# Conclusions
