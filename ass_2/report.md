@@ -22,10 +22,17 @@ nearest integer.
 
 # Results
 
+## Instance A
 | Method                        | Best | Worst | Average |
 |-------------------------------|:----:|:-----:|:-------:|
-| 2-Regret Insertion            |      |       |         |
-| Weighted Sum (α=1.00, β=1.00) |      |       |         |
+| 2-Regret Insertion            | 105852     | 123428      |  115474.93       |
+| Weighted Sum (α=1.00, β=1.00) | 71108     |  73438     |   72130.85      |
+
+## Instance B
+| Method                        | Best | Worst | Average |
+|-------------------------------|:----:|:-----:|:-------:|
+| 2-Regret Insertion            | 66505    | 77072      |  72454.77       |
+| Weighted Sum (α=1.00, β=1.00) | 47144     |  55700     |   50918.82      |
 
 ## Best path for the instance A
 ![](./TSPA_Weighted (α=1.00,β=1.00).png)
@@ -43,18 +50,18 @@ nearest integer.
 | 2-Regret Insertion                       |       21373    |  84479       |         **105852**  |
 |           Weighted Sum (α=1.00, β=1.00)  |     22981      | 48127        |  **71108**          |
 
-| NN - End                                 |                |              |                   |
-| NN - Anywhere                                 |                |              |                   |
-| Greedy Cycle                                 |                |              |                   |
+| NN - End                                 |  -              |     -         |   89198                |
+| NN - Anywhere                                 |    -            |   -           |   71488                |
+| Greedy Cycle                                 |   -             |   -           |    72639               |
 
 ## Instance B
 | Algorithm                                | Total Distance | Total Cost   | Objective Value |
 |------------------------------------------|:----------------:|:--------------:|:-----------------:|
 | 2-Regret Insertion                       |     22454      | 44051        |    **66505**        |
 |           Weighted Sum (α=1.00, β=1.00)  |    21152       | 25992        |  **47144**          |
-| NN - End                                 |                |              |                   |
-| NN - Anywhere                                 |                |              |                   |
-| Greedy Cycle                                 |                |              |                   |
+| NN - End                                 |      -          |   -           |    62606               |
+| NN - Anywhere                                 |     -           |     -         |     49001              |
+| Greedy Cycle                                 |     -           |     -         |    50243               |
 
 
 # Conclusions
