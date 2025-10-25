@@ -1,3 +1,4 @@
+method: random best cost: 193234 worst cost: 234798 avg cost: 214279.235
 method: nn_end best cost: 62606 worst cost: 77453 avg cost: 69764.43
 method: nn_anywhere best cost: 49001 worst cost: 57324 avg cost: 51400.905
 method: greedy_cycle best cost: 50243 worst cost: 50243 avg cost: 50243.0

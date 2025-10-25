@@ -1,0 +1,9 @@
+method,min_obj,max_obj,mean_obj
+greedy_intra:edges_start:greedy ,   46178,55471,50172.67
+greedy_intra:edges_start:random,    45537,51687,48154.865
+greedy_intra:nodes_start:greedy,    46373,55385,50347.525
+greedy_intra:nodes_start:random,    53417,71474,61453.295
+steepest_intra:edges_start:greedy,  45867,54814,49907.205
+steepest_intra:edges_start:random,  45903,51416,48195.845
+steepest_intra:nodes_start:greedy,  46371,55385,50201.47
+steepest_intra:nodes_start:random,  55686,71546,62955.885

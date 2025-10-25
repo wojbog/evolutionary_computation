@@ -159,7 +159,7 @@ def generate_greedy_solutions(coords, costs, method="random", runs=200):
 
 
 def show_path(path: list[int], title):
-    filename = "./../TSPB.csv"
+    filename = "TSPB.csv"
 
     df = pd.read_csv(filename, sep=";", header=0).reset_index(drop=True)
 
@@ -201,8 +201,8 @@ def import_data(filename):
 
 
 if __name__ == "__main__":
-    coords, costs = import_data("./../TSPB.csv")
+    coords, costs = import_data("TSPB.csv")
 
-    for method in ["nn_end", "nn_anywhere", "greedy_cycle"]:
+    for method in ["random"]:
         best, avg, sols = generate_greedy_solutions(coords, costs, method)
         print(f"{method:>12} | best={best[1]:5.1f} | avg={avg:5.1f}")
