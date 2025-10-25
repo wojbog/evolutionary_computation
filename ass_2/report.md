@@ -49,7 +49,6 @@ nearest integer.
 |------------------------------------------|:--------------:|:----------:|:-----------------:|
 | 2-Regret Insertion                       |       21373    |  84479       |         **105852**  |
 |           Weighted Sum (α=1.00, β=1.00)  |     22981      | 48127        |  **71108**          |
-
 | NN - End                                 |  -              |     -         |   89198                |
 | NN - Anywhere                                 |    -            |   -           |   71488                |
 | Greedy Cycle                                 |   -             |   -           |    72639               |
@@ -65,3 +64,5 @@ nearest integer.
 
 
 # Conclusions
+
+Among the four implemented heuristics, the Weighted Greedy (2-Regret + Cost) method achieved the best overall performance, producing the lowest objective values and the most consistent results across runs. The 2-Regret heuristic also performed well, showing a good balance between exploration and exploitation, while the simpler Nearest and Best Insertion methods were faster and often yielded beter solutions. Overall, incorporating regret and weighted selection significantly improved solution quality and stability compared to purely local greedy approaches.
