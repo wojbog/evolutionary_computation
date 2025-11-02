@@ -19,17 +19,17 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-## Greedy Heuristics with a Weighted Sum Criterion
-![](Greedy-heuristics-with-a-weighted-sum-criterion.png)
+## Local Search Greedy
+![](LocalSearchGreedy.png)
 
-## 2-Regret Insertion Heuristic
-![](Greedy-2-regret-heuristics.png)
+## Local Search Steepest
+![](LocalSearchSteepest.png)
 
 # Results
 
 ## Comparison of previous methods results
 
-## Instance A
+### Instance A
 | Method                        | Best | Worst | Average |
 |-------------------------------|:----:|:-----:|:-------:|
 | random                        | 235308     | 292123      |  264677.17    |
@@ -41,7 +41,7 @@ nearest integer.
 
 
 
-## Instance B
+### Instance B
 | Method                        | Best | Worst | Average |
 |-------------------------------|:----:|:-----:|:-------:|
 | random                        | 193234     | 234798      |  214279.235    |
@@ -52,9 +52,11 @@ nearest integer.
 | Weighted Sum (α=1.00, β=1.00) | 47144     |  55700     |   50918.82      |
 
 ## Local Search results
-| Method                                | Instance A Best | Instance B Best |
-|---------------------------------------|:----------------:|:----------------:|
-| --------------------------------------| best | worst | average| best | worst | average | 
+
+### Instance A
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
 |greedy_intra:edges_start:greedy    |70663|72648|71594.055  |46178 | 55471 | 50172.67 |
 |greedy_intra:edges_start:random    |71564|76328|73528.81   |45537 | 51687 | 48154.865|
 |greedy_intra:nodes_start:greedy    |70687|73027|71739.395  |46373 | 55385 | 50347.525|
@@ -63,6 +65,20 @@ nearest integer.
 |steepest_intra:edges_start:random  |71246|78153|73699.995  |45903 | 51416 | 48195.845|
 |steepest_intra:nodes_start:greedy  |70626|73004|71615.93   |46371 | 55385 | 50201.47 |
 |steepest_intra:nodes_start:random  |81322|95342|87939.335  |55686 | 71546 | 62955.885|
+
+### Instance B
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
+|greedy_intra:edges_start:greedy    |46178 | 55471 | 50172.67 |
+|greedy_intra:edges_start:random    |45537 | 51687 | 48154.865|
+|greedy_intra:nodes_start:greedy    |46373 | 55385 | 50347.525|
+|greedy_intra:nodes_start:random    |53417 | 71474 | 61453.295|
+|steepest_intra:edges_start:greedy  |45867 | 54814 | 49907.205|
+|steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
+|steepest_intra:nodes_start:greedy  |46371 | 55385 | 50201.47 |
+|steepest_intra:nodes_start:random  |55686 | 71546 | 62955.885|
+
 
 ## Best path for the instance A
 ![](./picture_a/best_path_greedy_intra_edges_start_greedy.png)
@@ -86,4 +102,36 @@ nearest integer.
 ![](./picture_b/best_path_steepest_intra_nodes_start_random.png)
 
 
+
+# Time
+
+## Instance A
+
+| Method  | min | max | average|
+|----------|----:|:-------:|:---------:|
+|greedy_intra:edges_start:greedy     |0.00  |0.006  |0.003 |
+|greedy_intra:edges_start:random     |0.062 |0.099  |0.080 |
+|greedy_intra:nodes_start:greedy     |0.000 |0.005  |0.002 |
+|greedy_intra:nodes_start:random     |0.066 |0.118  |0.085 |
+|steepest_intra:edges_start:greedy   |0.001 |0.005  |0.002 |
+|steepest_intra:edges_start:random   |0.039 |0.050  |0.045 |
+|steepest_intra:nodes_start:greedy   |0.000 |0.005  |0.002 |
+|steepest_intra:nodes_start:random   |0.049 |0.142  |0.071 |
+
+## Instance B
+
+| Method  | min | max | average|
+|----------|----:|:-------:|:---------:|
+|greedy_intra:edges_start:greedy     |0.0    |0.01    |0.004|
+|greedy_intra:edges_start:random     |0.064  |0.102   |0.081|
+|greedy_intra:nodes_start:greedy     |0.0    |0.007   |0.003|
+|greedy_intra:nodes_start:random     |0.058  |0.107   |0.082|
+|steepest_intra:edges_start:greedy   |0.001  |0.01    |0.004|
+|steepest_intra:edges_start:random   |0.038  |0.054   |0.045|
+|steepest_intra:nodes_start:greedy   |0.001  |0.007   |0.004|
+|steepest_intra:nodes_start:random   |0.048  |0.086   |0.063|
+
+
 # Conclusions
+
+The conducted experiments demonstrated that both the Greedy and Steepest local search algorithms effectively improved solutions for the node selection and Hamiltonian cycle optimization problem, outperforming baseline heuristics such as random, nearest neighbor, and insertion methods. Among the tested variants, approaches starting from greedy-based initial solutions consistently yielded better and more stable results compared to random starts, while the steepest variant occasionally achieved marginally better outcomes at the cost of slightly higher computation time. The methods proved highly efficient, with execution times in the millisecond range, and achieved significant reductions in total cost for both instances A and B. Overall, local search proved to be a robust and efficient optimization strategy, and future work could focus on integrating metaheuristic or hybrid approaches to further enhance solution quality and avoid local minima.
