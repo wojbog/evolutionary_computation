@@ -9,7 +9,8 @@ def load_all_instances(file_path):
     data = pd.read_csv(file_path, sep=';')
     return data
 
-file_path = 'result_B.csv'
+file_path = 'result_A_4.csv'
+instance_path ='TSPA.csv'
 
 data = read_csv_file(file_path)
 print(data.head())
@@ -32,7 +33,6 @@ print(summary.to_string(index=False))
 summary.to_csv('summary_objectives_by_method.csv', index=False)
 
 # load all instances from csv
-instance_path ='TSPB.csv'
 instances = load_all_instances(instance_path)
 print(instances.head())
 
@@ -42,7 +42,7 @@ import numpy as np
 def plot_instances(data):
     coords = data.iloc[:, [0, 1]].values
     costs = data.iloc[:, 2].values
-    sizes = costs / max(costs) * 100
+    sizes = ((costs - min(costs)) / (max(costs) - min(costs))) * 100
 
     plt.figure(figsize=(10, 6))
     plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=sizes)
@@ -63,6 +63,8 @@ def plot_instances(data):
 def visualize_best_paths(data, instances):
     methods = data['method'].unique()
     coords = instances.iloc[:, [0, 1]].values
+    costs = data.iloc[:, 2].values
+    sizes = ((costs - min(costs)) / (max(costs) - min(costs))) * 300
 
     for method in methods:
         method_data = data[data['method'] == method]
@@ -71,7 +73,7 @@ def visualize_best_paths(data, instances):
         title = f"Best path ({method}): objective={best_row['objective']:.1f}"
 
         plt.figure(figsize=(10, 6))
-        plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=20)
+        plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=sizes)
 
         for i, point in enumerate(coords):
             plt.text(point[0], point[1], str(i), fontsize=9, ha="right")
