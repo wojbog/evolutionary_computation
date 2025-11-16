@@ -412,9 +412,9 @@ type Edge struct {
 // Move stores minimal info to re-validate and apply the move
 type Move struct {
 	Type       MoveType
-	PosA       int   // for intra moves: positions in tour (i)
-	PosB       int   // second position (j)
-	NodeU      int   // used for inter: candidate node to bring in
+	PosA       int    // for intra moves: positions in tour (i)
+	PosB       int    // second position (j)
+	NodeU      int    // used for inter: candidate node to bring in
 	Removed    []Edge // edges removed by the move (ordered as they were when move created)
 	Delta      int
 	CreatedFor []int // optional snapshot of tour positions (not used in validation)
@@ -450,19 +450,22 @@ func (m *Move) Validate(tour []int) MoveState {
 	allPresent := true
 	atLeastOneReversed := false
 	for _, e := range m.Removed {
-		ok, rev := edgeExistsInTour(tour, e.U, e.V)
+		ok, _ := edgeExistsInTour(tour, e.U, e.V)
 		if !ok {
 			allPresent = false
 			break
 		}
-		if rev {
-			atLeastOneReversed = true
-		}
+		// if rev {
+		// 	atLeastOneReversed = true
+		// }
 	}
 	if !allPresent {
 		return MoveInvalid
 	}
 	if atLeastOneReversed {
+		return MoveReversedOrFuture
+	}
+	if m.Type == MoveInterReplace && FindIndexTour(tour, m.NodeU) != -1 {
 		return MoveReversedOrFuture
 	}
 	return MoveApplicable
@@ -471,38 +474,128 @@ func (m *Move) Validate(tour []int) MoveState {
 // Apply move to tour and inSel. It assumes the move is applicable.
 func applyMoveToSolution(m Move, tour []int, inSel []bool) {
 	K := len(tour)
+	if K == 0 {
+		return
+	}
+
+	// helper to swap positions of two nodes (by value)
+	swapNodes := func(aVal, bVal int) {
+		ai := FindIndexTour(tour, aVal)
+		bi := FindIndexTour(tour, bVal)
+		if ai == -1 || bi == -1 {
+			log.Fatalf("applyMoveToSolution: could not find nodes %d or %d in tour", aVal, bVal)
+		}
+		tour[ai], tour[bi] = tour[bi], tour[ai]
+	}
+
 	switch m.Type {
 	case MoveIntraSwap:
-		i := m.PosA
-		j := m.PosB
-		if i < 0 || j < 0 || i >= K || j >= K {
+		// BuildRemovedEdgesForSwap produces either 3 (adjacent/wrap) or 4 (non-adjacent) edges.
+		if len(m.Removed) == 3 {
+			// middle edge connects the two swapped nodes (A->B or B->A)
+			A := m.Removed[1].U
+			B := m.Removed[1].V
+			swapNodes(A, B)
+			return
+		} else if len(m.Removed) == 4 {
+			// removed: Aprev->A, A->Anext, Bprev->B, B->Bnext
+			A := m.Removed[0].V
+			B := m.Removed[2].V
+			swapNodes(A, B)
 			return
 		}
-		tour[i], tour[j] = tour[j], tour[i]
+		log.Fatal("applyMoveToSolution: unexpected removed-edges pattern for intra-swap")
+
 	case MoveIntra2Opt:
-		i := m.PosA
-		j := m.PosB
-		if i > j {
-			i, j = j, i
-		}
-		if i < 0 || j < 0 || i >= K || j >= K {
-			return
-		}
-		start := i + 1
-		end := j
-		for a, b := start, end; a < b; a, b = a+1, b-1 {
-			tour[a], tour[b] = tour[b], tour[a]
-		}
+		// // BuildRemovedEdgesFor2Opt returns [ai->ai1, aj->aj1]
+		// if len(m.Removed) != 2 {
+		// 	log.Fatal("applyMoveToSolution: unexpected removed-edges pattern for 2-opt")
+		// }
+		// ai1 := m.Removed[0].V
+		// aj := m.Removed[1].U
+		// posA := FindIndexTour(tour, ai1)
+		// posB := FindIndexTour(tour, aj)
+		// if posA == -1 || posB == -1 {
+		// 	log.Fatalf("applyMoveToSolution: could not find nodes for 2-opt: %d or %d", ai1, aj)
+		// }
+		// if posA > posB {
+		// 	posA, posB = posB, posA
+		// }
+		// // reverse segment [posA .. posB]
+		// for a, b := posA, posB; a < b; a, b = a+1, b-1 {
+		// 	tour[a], tour[b] = tour[b], tour[a]
+		// }
+		// return
+		// BuildRemovedEdgesFor2Opt returns [ai->ai1, aj->aj1]
+        // We want to reverse the segment starting at ai1 and ending at aj.
+        if len(m.Removed) != 2 {
+            log.Fatal("applyMoveToSolution: unexpected removed-edges pattern for 2-opt")
+        }
+        
+        ai1 := m.Removed[0].V
+        aj := m.Removed[1].U
+        
+        posA := FindIndexTour(tour, ai1)
+        posB := FindIndexTour(tour, aj)
+        
+        if posA == -1 || posB == -1 {
+            log.Fatalf("applyMoveToSolution: could not find nodes for 2-opt: %d or %d", ai1, aj)
+        }
+
+        // Standard 2-opt reverses the segment FROM ai1 TO aj.
+        if posA <= posB {
+            // Linear case: ai1 comes before aj in array. 
+            // Reverse the segment [posA ... posB]
+            for a, b := posA, posB; a < b; a, b = a+1, b-1 {
+                tour[a], tour[b] = tour[b], tour[a]
+            }
+        } else {
+            // Wrap-around case: ai1 is later in the array than aj.
+            // The segment wraps over the end. 
+            // Reversing the wrap-around segment is topologically equivalent 
+            // to reversing the "linear" complement segment: [aj1 ... ai].
+            // aj1 is at posB+1, ai is at posA-1.
+            
+            // Note: We must handle bounds if posB is last or posA is first, 
+            // but posA > posB implies posA > 0 and posB < N-1 usually.
+            // If posB is the last element, posB+1 overflows? 
+            // But aj is m.Removed[1].U, so aj->aj1 exists. 
+            // If aj is last, aj1 is 0. But posA > posB implies posA != 0.
+            
+            start := posB + 1
+            end := posA - 1
+            
+            // Reverse the complement segment
+            for a, b := start, end; a < b; a, b = a+1, b-1 {
+                tour[a], tour[b] = tour[b], tour[a]
+            }
+        }
+        return
+
 	case MoveInterReplace:
-		pos := m.PosA
-		u := m.NodeU
-		if pos < 0 || pos >= K {
-			return
+		// BuildRemovedEdgesForReplace returns [prev->s, s->next], so removed node s is m.Removed[0].V (or m.Removed[1].U).
+		if len(m.Removed) != 2 {
+			log.Fatal("applyMoveToSolution: unexpected removed-edges pattern for replace")
 		}
-		old := tour[pos]
-		inSel[old] = false
+		s := m.Removed[0].V
+		pos := FindIndexTour(tour, s)
+		if pos == -1 {
+			log.Fatalf("applyMoveToSolution: could not find replaced node %d in tour", s)
+		}
+		u := m.NodeU
+		// safety: ensure u not already selected
+		if inSel[u] {
+			// try to find an alternative: if u already selected, still replace position (caller should ensure validity)
+			// but log warning
+			log.Printf("applyMoveToSolution: replacing with node %d that is already selected", u)
+		}
+		inSel[s] = false
 		inSel[u] = true
 		tour[pos] = u
+		return
+
+	default:
+		log.Fatal("applyMoveToSolution: unknown move type")
 	}
 }
 
@@ -564,30 +657,49 @@ func BuildRemovedEdgesForReplace(tour []int, pos int) []Edge {
 	return []Edge{{U: prev, V: s}, {U: s, V: next}}
 }
 
+// sorting LM moves by delta (ascending)
+func sortMovesByDelta(moves []Move) {
+	sort.Slice(moves, func(i, j int) bool {
+		return moves[i].Delta < moves[j].Delta
+	})
+}
+
+// delete move at index from slice
+func deleteMoveAtIndex(moves []Move, index int) []Move {
+	if index ==0 {
+		return moves[1:]
+	} else if index == len(moves)-1 {
+		return moves[:len(moves)-1]
+	}
+	return append(moves[:index], moves[index+1:]...)
+}
+
 // -------------------- Local Search: Steepest with LM --------------------
 
 // LocalSearchSteepestWithLM: tries LM first (validate and apply/apply/remove as described)
 // If LM yields nothing applicable, scans neighborhood to find best improving move,
 // applies it and adds it to LM for next iterations.
 // Returns (changed bool, evals, improvements)
-func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMode string, evalLimit int, cand [][]int, rnd *rand.Rand) (bool, int, int, []Move) {
+func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMode string, evalLimit int, cand [][]int, rnd *rand.Rand, LM []Move) (bool, int, int, []Move) {
 	K := inst.K
 	dist := inst.Dist
 	nodes := inst.Nodes
 
 	// We'll create LM local to this call and allow it to be returned if the caller wants to persist.
 	// However the RunLocalSearch will maintain LM across iterations by passing it back between calls.
-	LM := make([]Move, 0)
+	// LM := make([]Move, 0)
 
 	// initial evaluation: evaluate the full neighborhood once to populate LM with applicable improving moves
 	evals := 0
 	improvements := 0
-	bestDelta := 0
-	var bestMove Move
+	// bestDelta := 0
+	// var bestMove Move
 
 	// Evaluate all moves for the initial tour and add improving moves to LM.
 	// In practice, this step can be limited or randomized; here we follow the assignment: evaluate currently applicable moves and their inverted edges.
 	// Intra moves
+	if len(LM) == 0 {
+
 	if intraMode == "nodes" {
 		for i := 0; i < K; i++ {
 			for j := i + 1; j < K; j++ {
@@ -603,10 +715,6 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 						Removed: BuildRemovedEdgesForSwap(tour, i, j),
 					}
 					LM = append(LM, m)
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
 				}
 				if evalLimit > 0 && evals >= evalLimit {
 					return false, evals, improvements, LM
@@ -627,26 +735,16 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 						Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
 					}
 					LM = append(LM, m)
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
 				}
 				if evalLimit > 0 && evals >= evalLimit {
 					return false, evals, improvements, LM
 				}
 			}
 		}
-	}
-
-	// Inter moves using candidate lists (neighbors of neighbors)
-	for pos := 0; pos < K; pos++ {
-		// examine candidates from neighbors as in original steepest
-		nextCand := cand[tour[mod(pos+1, K)]]
-		prevCand := cand[tour[mod(pos-1, K)]]
-		for _, list := range [][]int{nextCand, prevCand} {
-			for _, u := range list {
-				// only consider nodes not currently selected
+		// Inter moves: consider all non-selected nodes (no candidate lists)
+		n := len(nodes)
+		for pos := 0; pos < K; pos++ {
+			for u := 0; u < n; u++ {
 				if inSel[u] {
 					continue
 				}
@@ -661,25 +759,158 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 						Removed: BuildRemovedEdgesForReplace(tour, pos),
 					}
 					LM = append(LM, m)
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
 				}
 				if evalLimit > 0 && evals >= evalLimit {
 					return false, evals, improvements, LM
 				}
 			}
 		}
+
+	}
+	sortMovesByDelta(LM)
+}
+	lengthLM := len(LM)
+
+
+	for idxM :=0; idxM < lengthLM; idxM++ {
+		if idxM >= len(LM) {
+			break
+		}
+		state := LM[idxM].Validate(tour)
+		if state == MoveInvalid {
+			// drop it from LM
+			LM = deleteMoveAtIndex(LM, idxM)
+			
+			idxM--
+			// fmt.Println("Dropping invalid move from LM with delta")
+		} else if state == MoveReversedOrFuture {
+			// keep it, but do not apply now
+			// fmt.Println("Keeping move from LM with delta")
+			continue
+		} else if state == MoveApplicable {
+			// apply and remove from LM
+			// fmt.Println("Applying move from LM with delta", LM[idxM].Delta)
+			// caluclate objective before applying
+			// objBefore := TourLength(dist, tour) + SelectedCosts(nodes, tour)
+			// fmt.Println("Objective before applying LM move:", objBefore)
+			// print tour before
+			// fmt.Println("Tour before applying LM move:", tour)
+			// print move details
+			// fmt.Printf("Move details: %+v\n", LM[idxM])
+			applyMoveToSolution(LM[idxM], tour, inSel)
+			LM = deleteMoveAtIndex(LM, idxM)
+			idxM--
+				
+			// print tour after
+			// fmt.Println("Tour after applying LM move:", tour)
+			// caluclate objective after applying
+			// objAfter := TourLength(dist, tour) + SelectedCosts(nodes, tour)
+			// fmt.Println("Objective after applying LM move:", objAfter)
+			// if objAfter >= objBefore {
+			// 	log.Fatalf("Error: applied LM move did not improve objective (%d -> %d)",  objBefore, objAfter)
+			// }
+			improvements++
+			// applied = true
+			// After applying one LM move we follow the assignment: "perform (apply) the move and remove from LM"
+			// Stop after first applied LM move to re-evaluate neighborhood next iteration.
+			// Note: Could apply multiple LM moves in one go, but safer to apply one and re-validate.
+			// Return updated LM without this move (others are in newLM).
+			// Also do not re-add this move.
+			// We return now with updated LM (newLM).
+			return true, evals, improvements, LM
+		}
 	}
 
-	// If we found an improving move in the initial evaluation, apply the steepest one
+	bestDelta := 0
+	var bestMove Move
+
+	if intraMode == "nodes" {
+		for i := 0; i < K; i++ {
+			for j := i + 1; j < K; j++ {
+				delta := deltaSwapPositions(dist, nodes, tour, i, j)
+				evals++
+				if delta < 0 {
+					// record move
+					m := Move{
+						Type:    MoveIntraSwap,
+						PosA:    i,
+						PosB:    j,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesForSwap(tour, i, j),
+					}
+					if delta < bestDelta {
+						bestDelta = delta
+						bestMove = m
+					}
+					LM = append(LM, m)
+				}
+				if evalLimit > 0 && evals >= evalLimit {
+					return false, evals, improvements, LM
+				}
+			}
+		}
+	} else {
+		for i := 0; i < K; i++ {
+			for j := i + 1; j < K; j++ {
+				delta := delta2Opt(dist, nodes, tour, i, j)
+				evals++
+				if delta < 0 {
+					m := Move{
+						Type:    MoveIntra2Opt,
+						PosA:    i,
+						PosB:    j,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
+					}
+					if delta < bestDelta {
+						bestDelta = delta
+						bestMove = m
+					}
+					LM = append(LM, m)
+				}
+				if evalLimit > 0 && evals >= evalLimit {
+					return false, evals, improvements, LM
+				}
+			}
+		}
+		// Inter moves: consider all non-selected nodes (no candidate lists)
+		n := len(nodes)
+		for pos := 0; pos < K; pos++ {
+			for u := 0; u < n; u++ {
+				if inSel[u] {
+					continue
+				}
+				delta := deltaReplaceAtPos(dist, nodes, tour, pos, u)
+				evals++
+				if delta < 0 {
+					m := Move{
+						Type:    MoveInterReplace,
+						PosA:    pos,
+						NodeU:   u,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesForReplace(tour, pos),
+					}
+					if delta < bestDelta {
+						bestDelta = delta
+						bestMove = m
+					}
+					LM = append(LM, m)
+				}
+				if evalLimit > 0 && evals >= evalLimit {
+					return false, evals, improvements, LM
+				}
+			}
+		}
+
+	}
+	
 	if bestDelta < 0 {
+		sortMovesByDelta(LM)
 		applyMoveToSolution(bestMove, tour, inSel)
 		improvements++
 		return true, evals, improvements, LM
-	}
-	// else nothing initially improving -> return with LM populated (so caller can reuse)
+	} 
+
 	return false, evals, improvements, LM
 }
 
@@ -697,7 +928,7 @@ func LocalSearchSteepest_LM_Iter(inst *Instance, tour []int, inSel []bool, intra
 
 	// 1) Try LM moves first (validate each)
 	newLM := make([]Move, 0, len(LM))
-	applied := false
+	// applied := false
 
 	for _, m := range LM {
 		state := m.Validate(tour)
@@ -712,7 +943,7 @@ func LocalSearchSteepest_LM_Iter(inst *Instance, tour []int, inSel []bool, intra
 			// apply and remove from LM
 			applyMoveToSolution(m, tour, inSel)
 			improvements++
-			applied = true
+			// applied = true
 			// After applying one LM move we follow the assignment: "perform (apply) the move and remove from LM"
 			// Stop after first applied LM move to re-evaluate neighborhood next iteration.
 			// Note: Could apply multiple LM moves in one go, but safer to apply one and re-validate.
@@ -850,6 +1081,7 @@ func RunLocalSearch(inst *Instance, tour []int, inSel []bool, mode string, intra
 	// For LM mode, we maintain LM across iterations
 	var LM []Move
 
+	LM = make([]Move, 0)
 	for {
 		iter++
 		var changed bool
@@ -858,19 +1090,17 @@ func RunLocalSearch(inst *Instance, tour []int, inSel []bool, mode string, intra
 			changed, evals, imps = LocalSearchGreedy(inst, tourCopy, inCopy, intraMode, rnd, evalLimitPerCall)
 		} else if mode == "steepest_lm" {
 			// first call: if LM empty, populate it by evaluating initial neighborhood once
-			if iter == 1 {
-				ch, ev, im, lm := LocalSearchSteepestWithLM(inst, tourCopy, inCopy, intraMode, evalLimitPerCall, cand, rnd)
-				LM = lm
-				changed = ch
-				evals = ev
-				imps = im
-			} else {
-				ch, ev, im, lm := LocalSearchSteepest_LM_Iter(inst, tourCopy, inCopy, intraMode, evalLimitPerCall, cand, LM)
-				LM = lm
-				changed = ch
-				evals = ev
-				imps = im
+			beforeObj := TourLength(inst.Dist, tourCopy) + SelectedCosts(inst.Nodes, tourCopy)
+			ch, ev, im, lm := LocalSearchSteepestWithLM(inst, tourCopy, inCopy, intraMode, evalLimitPerCall, cand, rnd, LM)
+			LM = lm
+			// calculate objective and LM size
+			obj := TourLength(inst.Dist, tourCopy) + SelectedCosts(inst.Nodes, tourCopy)
+			if obj > beforeObj {
+				break
 			}
+			changed = ch
+			evals = ev
+			imps = im
 		} else {
 			changed, evals, imps = LocalSearchSteepest(inst, tourCopy, inCopy, intraMode, evalLimitPerCall, cand)
 		}
@@ -1159,8 +1389,8 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 		startType string // "random" or "greedy"
 	}{
 		{"steepest_lm", "edges", "random"},
-		{"steepest", "edges", "random"},
-		{"greedy", "nodes", "random"},
+		// {"steepest", "edges", "random"},
+		// {"greedy", "nodes", "random"},
 	}
 
 	for _, m := range methods {
