@@ -335,13 +335,23 @@ func delta2Opt(dist [][]int, nodes []Node, tour []int, i int, j int) int {
 	if i == j {
 		return 0
 	}
-	if i > j {
-		i, j = j, i
-	}
-	ai := tour[i]
-	ai1 := tour[mod(i+1, K)]
+	// if i > j {
+	// 	i, j = j, i
+	// }
+	ai1 := tour[i]
+	ai := tour[mod(i-1, K)]
 	aj := tour[j]
 	aj1 := tour[mod(j+1, K)]
+	if ai1 == aj {
+		return 0
+	}
+	if aj1 == ai {
+		return 0
+	}
+	if ai == aj {
+		return 0
+	}
+
 	deltaLen := dist[ai][aj] + dist[ai1][aj1] - dist[ai][ai1] - dist[aj][aj1]
 	return deltaLen
 }
@@ -531,12 +541,34 @@ func applyMoveToSolution(m Move, tour []int, inSel []bool) {
         if len(m.Removed) != 2 {
             log.Fatal("applyMoveToSolution: unexpected removed-edges pattern for 2-opt")
         }
-        
+    
+		ai := m.Removed[0].U
         ai1 := m.Removed[0].V
+
         aj := m.Removed[1].U
-        
-        posA := FindIndexTour(tour, ai1)
-        posB := FindIndexTour(tour, aj)
+		aj1 := m.Removed[1].V
+
+		posai := FindIndexTour(tour, ai)
+		posai1 := FindIndexTour(tour, ai1)
+
+		var posA int
+		var posB int
+
+		if posai > posai1 {
+			posA = posai
+		} else {
+			posA = posai1
+		}
+
+		posaj := FindIndexTour(tour, aj)
+		posaj1 := FindIndexTour(tour, aj1)
+
+		if posaj1 < posaj && posaj1 != 0 {
+			posB = posaj1
+		} else {
+			posB = posaj
+		}
+
         
         if posA == -1 || posB == -1 {
             log.Fatalf("applyMoveToSolution: could not find nodes for 2-opt: %d or %d", ai1, aj)
@@ -674,6 +706,70 @@ func deleteMoveAtIndex(moves []Move, index int) []Move {
 	return append(moves[:index], moves[index+1:]...)
 }
 
+func FillLm(inst *Instance, tour []int, inSel []bool, intraMode string, LM []Move) []Move {
+	K := inst.K
+	dist := inst.Dist
+	nodes := inst.Nodes
+
+	if intraMode == "nodes" {
+		for i := 0; i < K; i++ {
+			for j := i + 1; j < K; j++ {
+				delta := deltaSwapPositions(dist, nodes, tour, i, j)
+				if delta < 0 {
+					// record move
+					m := Move{
+						Type:    MoveIntraSwap,
+						PosA:    i,
+						PosB:    j,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesForSwap(tour, i, j),
+					}
+					LM = append(LM, m)
+				}
+			}
+		}
+	} else {
+		for i := 0; i < K; i++ {
+			for j := i + 1; j < K; j++ {
+				delta := delta2Opt(dist, nodes, tour, i, j)
+				if delta < 0 {
+					m := Move{
+						Type:    MoveIntra2Opt,
+						PosA:    i,
+						PosB:    j,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
+					}
+					LM = append(LM, m)
+				}
+			}
+		}
+		// Inter moves: consider all non-selected nodes (no candidate lists)
+		n := len(nodes)
+		for pos := 0; pos < K; pos++ {
+			for u := 0; u < n; u++ {
+				if inSel[u] {
+					continue
+				}
+				delta := deltaReplaceAtPos(dist, nodes, tour, pos, u)
+				if delta < 0 {
+					m := Move{
+						Type:    MoveInterReplace,
+						PosA:    pos,
+						NodeU:   u,
+						Delta:   delta,
+						Removed: BuildRemovedEdgesForReplace(tour, pos),
+					}
+					LM = append(LM, m)
+				}
+			}
+		}
+
+	}
+	sortMovesByDelta(LM)
+return LM
+}
+
 // -------------------- Local Search: Steepest with LM --------------------
 
 // LocalSearchSteepestWithLM: tries LM first (validate and apply/apply/remove as described)
@@ -681,7 +777,7 @@ func deleteMoveAtIndex(moves []Move, index int) []Move {
 // applies it and adds it to LM for next iterations.
 // Returns (changed bool, evals, improvements)
 func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMode string, evalLimit int, cand [][]int, rnd *rand.Rand, LM []Move) (bool, int, int, []Move) {
-	K := inst.K
+	// K := inst.K
 	dist := inst.Dist
 	nodes := inst.Nodes
 
@@ -700,75 +796,9 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 	// Intra moves
 	if len(LM) == 0 {
 
-	if intraMode == "nodes" {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := deltaSwapPositions(dist, nodes, tour, i, j)
-				evals++
-				if delta < 0 {
-					// record move
-					m := Move{
-						Type:    MoveIntraSwap,
-						PosA:    i,
-						PosB:    j,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesForSwap(tour, i, j),
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
-	} else {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := delta2Opt(dist, nodes, tour, i, j)
-				evals++
-				if delta < 0 {
-					m := Move{
-						Type:    MoveIntra2Opt,
-						PosA:    i,
-						PosB:    j,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
-		// Inter moves: consider all non-selected nodes (no candidate lists)
-		n := len(nodes)
-		for pos := 0; pos < K; pos++ {
-			for u := 0; u < n; u++ {
-				if inSel[u] {
-					continue
-				}
-				delta := deltaReplaceAtPos(dist, nodes, tour, pos, u)
-				evals++
-				if delta < 0 {
-					m := Move{
-						Type:    MoveInterReplace,
-						PosA:    pos,
-						NodeU:   u,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesForReplace(tour, pos),
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
-
+		LM = FillLm(inst, tour, inSel, intraMode, LM)
 	}
-	sortMovesByDelta(LM)
-}
+
 	lengthLM := len(LM)
 
 
@@ -788,27 +818,65 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 			// fmt.Println("Keeping move from LM with delta")
 			continue
 		} else if state == MoveApplicable {
-			// apply and remove from LM
-			// fmt.Println("Applying move from LM with delta", LM[idxM].Delta)
-			// caluclate objective before applying
-			// objBefore := TourLength(dist, tour) + SelectedCosts(nodes, tour)
-			// fmt.Println("Objective before applying LM move:", objBefore)
-			// print tour before
-			// fmt.Println("Tour before applying LM move:", tour)
-			// print move details
-			// fmt.Printf("Move details: %+v\n", LM[idxM])
+			
+
+			var delta int
+			if LM[idxM].Type == MoveInterReplace {
+				sIdx := FindIndexTour(tour, LM[idxM].Removed[0].V)
+				if sIdx == -1 {
+					fmt.Print(LM[idxM].Removed[0].V)
+					log.Fatalf("Error: LM move inter-replace node %d NOT in tour at position %d", LM[idxM].Removed[0].V, sIdx)
+				}
+				delta = deltaReplaceAtPos(dist, nodes, tour, sIdx, LM[idxM].NodeU)
+			} else if LM[idxM].Type == MoveIntraSwap {
+				log.Fatal("Error: LM move intra-swap should not be re-evaluated here")
+				delta = deltaSwapPositions(dist, nodes, tour, LM[idxM].PosA, LM[idxM].PosB)
+			} else if LM[idxM].Type == MoveIntra2Opt {
+        		ai := LM[idxM].Removed[0].U
+				ai1 := LM[idxM].Removed[0].V
+
+				aj := LM[idxM].Removed[1].U
+				aj1 := LM[idxM].Removed[1].V
+
+				posai := FindIndexTour(tour, ai)
+				posai1 := FindIndexTour(tour, ai1)
+				var posA int
+				var posB int
+
+				if posai > posai1  {
+					posA = posai
+				} else {
+					posA = posai1
+				}
+
+				posaj := FindIndexTour(tour, aj)
+				posaj1 := FindIndexTour(tour, aj1)
+
+				if posaj1 < posaj && posaj1 != 0 {
+					posB = posaj1
+				} else {
+					posB = posaj
+				}
+
+				delta = delta2Opt(dist, nodes, tour, posA, posB)
+			} else {
+				log.Fatalf("Unknown move type in LM: %d", LM[idxM].Type)
+			}
+
+			if delta >= 0 {
+				LM = deleteMoveAtIndex(LM, idxM)
+				idxM--
+				continue
+			}
+
+
+
+
 			applyMoveToSolution(LM[idxM], tour, inSel)
 			LM = deleteMoveAtIndex(LM, idxM)
 			idxM--
 				
-			// print tour after
-			// fmt.Println("Tour after applying LM move:", tour)
-			// caluclate objective after applying
-			// objAfter := TourLength(dist, tour) + SelectedCosts(nodes, tour)
-			// fmt.Println("Objective after applying LM move:", objAfter)
-			// if objAfter >= objBefore {
-			// 	log.Fatalf("Error: applied LM move did not improve objective (%d -> %d)",  objBefore, objAfter)
-			// }
+
 			improvements++
 			// applied = true
 			// After applying one LM move we follow the assignment: "perform (apply) the move and remove from LM"
@@ -821,95 +889,188 @@ func LocalSearchSteepestWithLM(inst *Instance, tour []int, inSel []bool, intraMo
 		}
 	}
 
-	bestDelta := 0
-	var bestMove Move
+	// fmt.Println("No applicable LM moves found, scanning neighborhood for best move")
+	// bestDelta := 0
+	// var bestMove Move
 
-	if intraMode == "nodes" {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := deltaSwapPositions(dist, nodes, tour, i, j)
-				evals++
-				if delta < 0 {
-					// record move
-					m := Move{
-						Type:    MoveIntraSwap,
-						PosA:    i,
-						PosB:    j,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesForSwap(tour, i, j),
-					}
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
-	} else {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := delta2Opt(dist, nodes, tour, i, j)
-				evals++
-				if delta < 0 {
-					m := Move{
-						Type:    MoveIntra2Opt,
-						PosA:    i,
-						PosB:    j,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
-					}
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
-		// Inter moves: consider all non-selected nodes (no candidate lists)
-		n := len(nodes)
-		for pos := 0; pos < K; pos++ {
-			for u := 0; u < n; u++ {
-				if inSel[u] {
-					continue
-				}
-				delta := deltaReplaceAtPos(dist, nodes, tour, pos, u)
-				evals++
-				if delta < 0 {
-					m := Move{
-						Type:    MoveInterReplace,
-						PosA:    pos,
-						NodeU:   u,
-						Delta:   delta,
-						Removed: BuildRemovedEdgesForReplace(tour, pos),
-					}
-					if delta < bestDelta {
-						bestDelta = delta
-						bestMove = m
-					}
-					LM = append(LM, m)
-				}
-				if evalLimit > 0 && evals >= evalLimit {
-					return false, evals, improvements, LM
-				}
-			}
-		}
+	// if intraMode == "nodes" {
+	// 	for i := 0; i < K; i++ {
+	// 		for j := i + 1; j < K; j++ {
+	// 			delta := deltaSwapPositions(dist, nodes, tour, i, j)
+	// 			evals++
+	// 			if delta < 0 {
+	// 				// record move
+	// 				m := Move{
+	// 					Type:    MoveIntraSwap,
+	// 					PosA:    i,
+	// 					PosB:    j,
+	// 					Delta:   delta,
+	// 					Removed: BuildRemovedEdgesForSwap(tour, i, j),
+	// 				}
+	// 				if delta < bestDelta {
+	// 					bestDelta = delta
+	// 					bestMove = m
+	// 				}
+	// 				LM = append(LM, m)
+	// 			}
+	// 			if evalLimit > 0 && evals >= evalLimit {
+	// 				return false, evals, improvements, LM
+	// 			}
+	// 		}
+	// 	}
+	// } else {
+	// 	for i := 0; i < K; i++ {
+	// 		for j := i + 1; j < K; j++ {
+	// 			delta := delta2Opt(dist, nodes, tour, i, j)
+	// 			evals++
+	// 			if delta < 0 {
+	// 				m := Move{
+	// 					Type:    MoveIntra2Opt,
+	// 					PosA:    i,
+	// 					PosB:    j,
+	// 					Delta:   delta,
+	// 					Removed: BuildRemovedEdgesFor2Opt(tour, i, j),
+	// 				}
+	// 				if delta < bestDelta {
+	// 					bestDelta = delta
+	// 					bestMove = m
+	// 				}
+	// 				LM = append(LM, m)
+	// 			}
+	// 			if evalLimit > 0 && evals >= evalLimit {
+	// 				return false, evals, improvements, LM
+	// 			}
+	// 		}
+	// 	}
+	// 	// Inter moves: consider all non-selected nodes (no candidate lists)
+	// 	n := len(nodes)
+	// 	for pos := 0; pos < K; pos++ {
+	// 		for u := 0; u < n; u++ {
+	// 			if inSel[u] {
+	// 				continue
+	// 			}
+	// 			delta := deltaReplaceAtPos(dist, nodes, tour, pos, u)
+	// 			evals++
+	// 			if delta < 0 {
+	// 				m := Move{
+	// 					Type:    MoveInterReplace,
+	// 					PosA:    pos,
+	// 					NodeU:   u,
+	// 					Delta:   delta,
+	// 					Removed: BuildRemovedEdgesForReplace(tour, pos),
+	// 				}
+	// 				if delta < bestDelta {
+	// 					bestDelta = delta
+	// 					bestMove = m
+	// 				}
+	// 				LM = append(LM, m)
+	// 			}
+	// 			if evalLimit > 0 && evals >= evalLimit {
+	// 				return false, evals, improvements, LM
+	// 			}
+	// 		}
+	// 	}
 
-	}
+	// }
 	
-	if bestDelta < 0 {
-		sortMovesByDelta(LM)
-		applyMoveToSolution(bestMove, tour, inSel)
-		improvements++
-		return true, evals, improvements, LM
-	} 
+	// if bestDelta < 0 {
+	// 	sortMovesByDelta(LM)
+	// 	applyMoveToSolution(bestMove, tour, inSel)
+	// 	// LM = deleteMoveAtIndex(LM, idxM)
+	// 	// idxM--
+	// 	improvements++
+	// 	return true, evals, improvements, LM
+	// } 
+	LM = FillLm(inst, tour, inSel, intraMode, LM)
+
+
+	lengthLM = len(LM)
+
+
+	for idxM :=0; idxM < lengthLM; idxM++ {
+		if idxM >= len(LM) {
+			break
+		}
+		state := LM[idxM].Validate(tour)
+		if state == MoveInvalid {
+			// drop it from LM
+			LM = deleteMoveAtIndex(LM, idxM)
+			
+			idxM--
+			// fmt.Println("Dropping invalid move from LM with delta")
+		} else if state == MoveReversedOrFuture {
+			// keep it, but do not apply now
+			// fmt.Println("Keeping move from LM with delta")
+			continue
+		} else if state == MoveApplicable {
+			
+
+			var delta int
+			if LM[idxM].Type == MoveInterReplace {
+				sIdx := FindIndexTour(tour, LM[idxM].Removed[0].V)
+				if sIdx == -1 {
+					fmt.Print(LM[idxM].Removed[0].V)
+					log.Fatalf("Error: LM move inter-replace node %d NOT in tour at position %d", LM[idxM].Removed[0].V, sIdx)
+				}
+				delta = deltaReplaceAtPos(dist, nodes, tour, sIdx, LM[idxM].NodeU)
+			} else if LM[idxM].Type == MoveIntraSwap {
+				log.Fatal("Error: LM move intra-swap should not be re-evaluated here")
+				delta = deltaSwapPositions(dist, nodes, tour, LM[idxM].PosA, LM[idxM].PosB)
+			} else if LM[idxM].Type == MoveIntra2Opt {
+        		ai := LM[idxM].Removed[0].U
+				ai1 := LM[idxM].Removed[0].V
+
+				aj := LM[idxM].Removed[1].U
+				aj1 := LM[idxM].Removed[1].V
+
+				posai := FindIndexTour(tour, ai)
+				posai1 := FindIndexTour(tour, ai1)
+				var posA int
+				var posB int
+
+				if posai > posai1  {
+					posA = posai
+				} else {
+					posA = posai1
+				}
+
+				posaj := FindIndexTour(tour, aj)
+				posaj1 := FindIndexTour(tour, aj1)
+
+				if posaj1 < posaj && posaj1 != 0 {
+					posB = posaj1
+				} else {
+					posB = posaj
+				}
+
+				delta = delta2Opt(dist, nodes, tour, posA, posB)
+			} else {
+				log.Fatalf("Unknown move type in LM: %d", LM[idxM].Type)
+			}
+
+			if delta >= 0 {
+				LM = deleteMoveAtIndex(LM, idxM)
+				idxM--
+				continue
+			}
+
+
+
+			applyMoveToSolution(LM[idxM], tour, inSel)
+			LM = deleteMoveAtIndex(LM, idxM)
+			idxM--
+				
+			improvements++
+			// applied = true
+			// After applying one LM move we follow the assignment: "perform (apply) the move and remove from LM"
+			// Stop after first applied LM move to re-evaluate neighborhood next iteration.
+			// Note: Could apply multiple LM moves in one go, but safer to apply one and re-validate.
+			// Return updated LM without this move (others are in newLM).
+			// Also do not re-add this move.
+			// We return now with updated LM (newLM).
+			return true, evals, improvements, LM
+		}
+	}
 
 	return false, evals, improvements, LM
 }

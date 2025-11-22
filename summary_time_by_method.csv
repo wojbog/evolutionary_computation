@@ -1,2 +1,2 @@
 method,min_time,max_time,mean_time
-steepest_intra:edges_start:random,0.009,0.05,0.012
+steepest_lm_intra:edges_start:random,0.039,0.1,0.058

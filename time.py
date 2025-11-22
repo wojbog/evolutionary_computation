@@ -4,7 +4,7 @@ def read_csv_file(file_path):
     data = pd.read_csv(file_path)
     return data
 
-file_path = 'result_B_4.csv'
+file_path = 'res_5_a.csv'
 
 data = read_csv_file(file_path)
 print(data.head())
@@ -12,7 +12,7 @@ print(data.head())
 
 # for each method calculate average time duration_ms
 summary = (
-    data.groupby('method')['duration_ms']
+    data.groupby('method')['duration_s']
     .agg(min_time='min', max_time='max', mean_time='mean')
     .reset_index()
 )
