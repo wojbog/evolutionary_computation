@@ -145,8 +145,6 @@ func RandomStart(inst *Instance, rnd *rand.Rand) ([]int, []bool) {
 	return selected, inSelected
 }
 
-
-
 func countSelected(sel []bool) int {
 	c := 0
 	for _, v := range sel {
@@ -156,7 +154,6 @@ func countSelected(sel []bool) int {
 	}
 	return c
 }
-
 
 func bestInsertion(node int, tour []int, D [][]int) (int, int) {
 	best := math.MaxInt
@@ -184,7 +181,7 @@ func insertAt(tour []int, pos int, node int) []int {
 // Greedy construction using regret-2 insertion. Start from a specified starting node index.
 func GreedyRegretStart(inst *Instance, startNode int) ([]int, []bool) {
 	k := inst.K
-	D:= inst.Dist
+	D := inst.Dist
 	alpha := 1.0
 	beta := 1.0
 	nodes := inst.Nodes
@@ -241,7 +238,6 @@ func GreedyRegretStart(inst *Instance, startNode int) ([]int, []bool) {
 		selected[ch.node] = true
 		tour = insertAt(tour, ch.bestPos, ch.node)
 	}
-	
 
 	return tour, selected
 }
@@ -300,7 +296,7 @@ func deltaSwapPositions(dist [][]int, nodes []Node, tour []int, i int, j int) in
 
 	deltaLen := 0
 	// If positions adjacent, careful with overlapping edges
-	if i==0 && j==K-1 {
+	if i == 0 && j == K-1 {
 		// A and B adjacent, order ... B - A ...
 		// old edges: Bprev-B, B-A, A-Anext
 		// new edges: Bprev-A, A-B, B-Anext
@@ -364,22 +360,13 @@ func LocalSearchGreedy(inst *Instance, tour []int, inSel []bool, intraMode strin
 	// - intra actions as pairs (i,j) (for nodes swap or 2-opt), enumerated but shuffled
 	// - inter actions as (pos, u) enumerated but we'll shuffle pos list and for each pos produce randomized candidate unselected nodes
 	// We'll interleave by alternating trying an intra move then an inter move until we find an improving move.
-
 	// Enumerate intra moves indices and shuffle
 	intraPairs := make([][2]int, 0)
-	if intraMode == "nodes" {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				intraPairs = append(intraPairs, [2]int{i, j})
-			}
-		}
-	} else {
-		// edges (2-opt): consider i < j and not adjacent as separate moves as typical 2-opt
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				// in standard TSP 2-opt any i<j is valid (adjacent handled too)
-				intraPairs = append(intraPairs, [2]int{i, j})
-			}
+	// edges (2-opt): consider i < j and not adjacent as separate moves as typical 2-opt
+	for i := 0; i < K; i++ {
+		for j := i + 1; j < K; j++ {
+			// in standard TSP 2-opt any i<j is valid (adjacent handled too)
+			intraPairs = append(intraPairs, [2]int{i, j})
 		}
 	}
 	rnd.Shuffle(len(intraPairs), func(i, j int) { intraPairs[i], intraPairs[j] = intraPairs[j], intraPairs[i] })
@@ -419,23 +406,15 @@ func LocalSearchGreedy(inst *Instance, tour []int, inSel []bool, intraMode strin
 				i := p[0]
 				j := p[1]
 				var delta int
-				if intraMode == "nodes" {
-					delta = deltaSwapPositions(dist, nodes, tour, i, j)
-				} else {
-					delta = delta2Opt(dist, nodes, tour, i, j)
-				}
+				delta = delta2Opt(dist, nodes, tour, i, j)
 				evals++
 				if delta < 0 {
 					// apply move
-					if intraMode == "nodes" {
-						tour[i], tour[j] = tour[j], tour[i]
-					} else {
-						// reverse segment i+1..j
-						start := i + 1
-						end := j
-						for a, b := start, end; a < b; a, b = a+1, b-1 {
-							tour[a], tour[b] = tour[b], tour[a]
-						}
+					// reverse segment i+1..j
+					start := i + 1
+					end := j
+					for a, b := start, end; a < b; a, b = a+1, b-1 {
+						tour[a], tour[b] = tour[b], tour[a]
 					}
 					improvements++
 					found = true
@@ -494,34 +473,17 @@ func LocalSearchSteepest(inst *Instance, tour []int, inSel []bool, intraMode str
 	improvements := 0
 
 	// Intra moves
-	if intraMode == "nodes" {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := deltaSwapPositions(dist, nodes, tour, i, j)
-				evals++
-				if delta < bestDelta {
-					bestDelta = delta
-					bestMoveType = "intra_nodes"
-					bestParams = [3]int{i, j, 0}
-				}
-				if evals >= evalLimit && evalLimit > 0 {
-					goto endSteep
-				}
+	for i := 0; i < K; i++ {
+		for j := i + 1; j < K; j++ {
+			delta := delta2Opt(dist, nodes, tour, i, j)
+			evals++
+			if delta < bestDelta {
+				bestDelta = delta
+				bestMoveType = "intra_edges"
+				bestParams = [3]int{i, j, 0}
 			}
-		}
-	} else {
-		for i := 0; i < K; i++ {
-			for j := i + 1; j < K; j++ {
-				delta := delta2Opt(dist, nodes, tour, i, j)
-				evals++
-				if delta < bestDelta {
-					bestDelta = delta
-					bestMoveType = "intra_edges"
-					bestParams = [3]int{i, j, 0}
-				}
-				if evals >= evalLimit && evalLimit > 0 {
-					goto endSteep
-				}
+			if evals >= evalLimit && evalLimit > 0 {
+				goto endSteep
 			}
 		}
 	}
@@ -630,8 +592,8 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	}{
 		// {"steepest", "nodes", "random"},
 		// {"steepest", "nodes", "greedy"},
-		{"steepest", "edges", "random"},
-		// {"steepest", "edges", "greedy"},
+		// {"steepest_multi_start", "edges", "random"},
+		{"ILS", "edges", "random"},
 		// {"greedy", "nodes", "random"},
 		// {"greedy", "nodes", "greedy"},
 		// {"greedy", "edges", "random"},
@@ -641,28 +603,97 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	for _, m := range methods {
 		methodName := fmt.Sprintf("%s_intra:%s_start:%s", m.mode, m.intraMode, m.startType)
 		fmt.Printf("Running method %s with %d runs...\n", methodName, runs)
-		for run := 0; run < runs; run++ {
-			// create a per-run RNG so results are reproducible
-			runSeed := int64(rnd.Int63())
-			runRnd := rand.New(rand.NewSource(runSeed))
 
-			var tour []int
-			var inSel []bool
-			if m.startType == "random" {
+		finalTour := []int{}
+		for run := 0; run < runs; run++ {
+			fmt.Printf(" Run %d/%d\n", run+1, runs)
+			start := time.Now()
+
+			if m.mode == "steepest_multi_start" {
+				// create a per-run RNG so results are reproducible
+				best_obj := math.MaxInt
+
+				for startAttempt := 0; startAttempt < 200; startAttempt++ {
+					var tour []int
+					var inSel []bool
+					runSeed := int64(rnd.Int63()) + int64(startAttempt*10000)
+
+					runRnd := rand.New(rand.NewSource(runSeed))
+
+					tour0, in0 := RandomStart(inst, runRnd)
+					tour = tour0
+					inSel = in0
+
+					// run local search
+
+					tour, _, _, _ = RunLocalSearch(inst, tour, inSel, m.mode, m.intraMode, runRnd)
+					// compute objective
+					tLen := TourLength(inst.Dist, tour)
+					sCost := SelectedCosts(inst.Nodes, tour)
+					obj := tLen + sCost
+					if obj < best_obj {
+						best_obj = obj
+						finalTour = tour
+					}
+				}
+			} else if m.mode == "ILS" {
+				runSeed := int64(rnd.Int63()) + int64(run*10000)
+				runRnd := rand.New(rand.NewSource(runSeed))
+
 				tour0, in0 := RandomStart(inst, runRnd)
-				tour = tour0
-				inSel = in0
-			} else {
-				// greedy start: use starting node = run % N (to emulate using different starting nodes)
-				startNode := run % inst.N
-				tour0, in0 := GreedyRegretStart(inst, startNode)
-				tour = tour0
-				inSel = in0
+				for {
+					// initial local search
+					// copy tour0
+					tour0_copy := make([]int, len(tour0))
+					copy(tour0_copy, tour0)
+
+					tour, inSel, _, _ := RunLocalSearch(inst, tour0_copy, in0, "steepest", m.intraMode, runRnd)
+
+					// perturbation: perform 3 random inter exchanges
+					for p := 0; p < 3; p++ {
+						// pick random position in tour
+						pos := runRnd.Intn(len(tour))
+						// pick random unselected node
+						var u int
+						for {
+							u = runRnd.Intn(inst.N)
+							if !inSel[u] {
+								break
+							}
+						}
+						// apply exchange
+						old := tour[pos]
+						inSel[old] = false
+						inSel[u] = true
+						tour[pos] = u
+					}
+					// local search again
+					tour_copy := make([]int, len(tour))
+					copy(tour_copy, tour)
+
+					tour0, in0, _, _ = RunLocalSearch(inst, tour_copy, inSel, "steepest", m.intraMode, runRnd)
+
+					// compare to previous best
+					tLen := TourLength(inst.Dist, tour0)
+					sCost := SelectedCosts(inst.Nodes, tour0)
+					obj := tLen + sCost
+
+					prev_tLen := TourLength(inst.Dist, tour)
+					prev_sCost := SelectedCosts(inst.Nodes, tour)
+					prev_obj := prev_tLen + prev_sCost
+
+					if obj < prev_obj {
+						fmt.Printf(" improvement found (obj %d < %d), continuing\n", obj, prev_obj)
+						continue
+					} else {
+						fmt.Printf("no improvement (obj %d >= %d), stopping\n", run, obj, prev_obj)
+						finalTour = tour
+						break
+					}
+
+				}
 			}
 
-			// run local search
-			start := time.Now()
-			finalTour, _, evals, imps := RunLocalSearch(inst, tour, inSel, m.mode, m.intraMode, runRnd)
 			elapsed := time.Since(start)
 			elapsedS := strconv.FormatFloat(elapsed.Seconds(), 'f', 6, 64)
 			// compute objective values for output
@@ -681,10 +712,10 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				strconv.Itoa(obj),
 				strconv.Itoa(tLen),
 				strconv.Itoa(sCost),
-				strconv.Itoa(evals),
-				strconv.Itoa(imps),
+				"-1", // strconv.Itoa(evals),
+				"-1", //strconv.Itoa(imps),
 				strings.Join(strSel, ";"),
-				strconv.FormatInt(runSeed, 10),
+				"-1", // strconv.FormatInt(runSeed, 10),
 				elapsedS,
 			}); err != nil {
 				return err
@@ -702,7 +733,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 func main() {
 	inPath := flag.String("in", "", "input CSV file path (rows: x,y,cost)")
 	outPath := flag.String("out", "result.csv", "output CSV results path")
-	runs := flag.Int("runs", 200, "number of runs per method")
+	runs := flag.Int("runs", 20, "number of runs per method")
 	seed := flag.Int64("seed", time.Now().UnixNano(), "random seed")
 	flag.Parse()
 	if *inPath == "" || *outPath == "" {
@@ -713,7 +744,6 @@ func main() {
 		log.Fatalf("Failed to read instance: %v", err)
 	}
 	fmt.Printf("Read instance with N=%d nodes, selecting K=%d nodes\n", inst.N, inst.K)
-
 
 	err = runMethods(inst, *runs, *seed, *outPath)
 	if err != nil {
