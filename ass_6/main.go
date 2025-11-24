@@ -592,8 +592,8 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	}{
 		// {"steepest", "nodes", "random"},
 		// {"steepest", "nodes", "greedy"},
-		{"steepest_multi_start", "edges", "random"},
-		// {"ILS", "edges", "random"},
+		// {"steepest_multi_start", "edges", "random"},
+		{"ILS", "edges", "random"},
 		// {"greedy", "nodes", "random"},
 		// {"greedy", "nodes", "greedy"},
 		// {"greedy", "edges", "random"},
@@ -603,34 +603,94 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	for _, m := range methods {
 		methodName := fmt.Sprintf("%s_intra:%s_start:%s", m.mode, m.intraMode, m.startType)
 		fmt.Printf("Running method %s with %d runs...\n", methodName, runs)
+
+		finalTour := []int{}
 		for run := 0; run < runs; run++ {
-			// create a per-run RNG so results are reproducible
 			fmt.Printf(" Run %d/%d\n", run+1, runs)
-			finalTour := []int{}
-			best_obj := math.MaxInt
 			start := time.Now()
 
-			for startAttempt := 0; startAttempt < 200; startAttempt++ {
-				var tour []int
-				var inSel []bool
-				runSeed := int64(rnd.Int63()) + int64(startAttempt*10000)
+			if m.mode == "steepest_multi_start" {
+				// create a per-run RNG so results are reproducible
+				best_obj := math.MaxInt
 
-				runRnd := rand.New(rand.NewSource(runSeed)) 
+				for startAttempt := 0; startAttempt < 200; startAttempt++ {
+					var tour []int
+					var inSel []bool
+					runSeed := int64(rnd.Int63()) + int64(startAttempt*10000)
+
+					runRnd := rand.New(rand.NewSource(runSeed))
+
+					tour0, in0 := RandomStart(inst, runRnd)
+					tour = tour0
+					inSel = in0
+
+					// run local search
+
+					tour, _, _, _ = RunLocalSearch(inst, tour, inSel, m.mode, m.intraMode, runRnd)
+					// compute objective
+					tLen := TourLength(inst.Dist, tour)
+					sCost := SelectedCosts(inst.Nodes, tour)
+					obj := tLen + sCost
+					if obj < best_obj {
+						best_obj = obj
+						finalTour = tour
+					}
+				}
+			} else if m.mode == "ILS" {
+				runSeed := int64(rnd.Int63()) + int64(run*10000)
+				runRnd := rand.New(rand.NewSource(runSeed))
 
 				tour0, in0 := RandomStart(inst, runRnd)
-				tour = tour0
-				inSel = in0
+				for {
+					// initial local search
+					// copy tour0
+					tour0_copy := make([]int, len(tour0))
+					copy(tour0_copy, tour0)
 
-				// run local search
+					tour, inSel, _, _ := RunLocalSearch(inst, tour0_copy, in0, "steepest", m.intraMode, runRnd)
 
-				tour, _, _, _ = RunLocalSearch(inst, tour, inSel, m.mode, m.intraMode, runRnd)
-				// compute objective
-				tLen := TourLength(inst.Dist, tour)
-				sCost := SelectedCosts(inst.Nodes, tour)
-				obj := tLen + sCost
-				if obj < best_obj {
-					best_obj = obj
-					finalTour = tour
+					// perturbation: perform 3 random inter exchanges
+					for p := 0; p < 3; p++ {
+						// pick random position in tour
+						pos := runRnd.Intn(len(tour))
+						// pick random unselected node
+						var u int
+						for {
+							u = runRnd.Intn(inst.N)
+							if !inSel[u] {
+								break
+							}
+						}
+						// apply exchange
+						old := tour[pos]
+						inSel[old] = false
+						inSel[u] = true
+						tour[pos] = u
+					}
+					// local search again
+					tour_copy := make([]int, len(tour))
+					copy(tour_copy, tour)
+
+					tour0, in0, _, _ = RunLocalSearch(inst, tour_copy, inSel, "steepest", m.intraMode, runRnd)
+
+					// compare to previous best
+					tLen := TourLength(inst.Dist, tour0)
+					sCost := SelectedCosts(inst.Nodes, tour0)
+					obj := tLen + sCost
+
+					prev_tLen := TourLength(inst.Dist, tour)
+					prev_sCost := SelectedCosts(inst.Nodes, tour)
+					prev_obj := prev_tLen + prev_sCost
+
+					if obj < prev_obj {
+						fmt.Printf(" improvement found (obj %d < %d), continuing\n", obj, prev_obj)
+						continue
+					} else {
+						fmt.Printf("no improvement (obj %d >= %d), stopping\n", run, obj, prev_obj)
+						finalTour = tour
+						break
+					}
+
 				}
 			}
 
@@ -652,10 +712,10 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				strconv.Itoa(obj),
 				strconv.Itoa(tLen),
 				strconv.Itoa(sCost),
-				"-1",// strconv.Itoa(evals),
+				"-1", // strconv.Itoa(evals),
 				"-1", //strconv.Itoa(imps),
 				strings.Join(strSel, ";"),
-				"-1",// strconv.FormatInt(runSeed, 10),
+				"-1", // strconv.FormatInt(runSeed, 10),
 				elapsedS,
 			}); err != nil {
 				return err
