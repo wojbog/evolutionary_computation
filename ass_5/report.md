@@ -19,7 +19,7 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-![./pseudocode.png](./pseudocode.png)
+![](./pseudocode.png)
 
 # Results
 
@@ -48,7 +48,7 @@ nearest integer.
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|75245 | 82747 | 78856.275|
+|steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
 
 ### Instance B
 | Method                        | Best | Worst | Average |
@@ -74,20 +74,20 @@ nearest integer.
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|49441 | 56187 |52214.715 |
+|steepest_lm_intra:edges_start:random|45941 | 51587 |48214.715 |
 
 ## Steepest with LM Mechanism results' path
 
 ### Instance A
 
 
-![./best_path_steepest_lm_intra_edges_start_random_A.png](./best_path_steepest_lm_intra_edges_start_random_A.png)
+![](./best_path_steepest_lm_intra_edges_start_random_A.png)
 
 
 ### Instance B
 
 
-![./best_path_steepest_lm_intra_edges_start_random_B.png](./best_path_steepest_lm_intra_edges_start_random_B.png)
+![](./best_path_steepest_lm_intra_edges_start_random_B.png)
 
 # Time
 
@@ -108,7 +108,7 @@ nearest integer.
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|0.025|0.049|0.039|
+|steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
 
 ## Instance B
 
@@ -126,7 +126,7 @@ nearest integer.
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|0.020|0.053|0.038|
+|steepest_lm_intra:edges_start:random|0.020|0.053|0.035|
 # Conclusions
 
-The implemented LM mechanism improved time significantly, but the quality of the results is much worse than other methods. This probably implies a wrong implementation, and it the further revisit will be needed.
+The implemented LM mechanism improved time significantly, but the results are slightly worse than the steepest algorithm without LM mechanism. Adding cash mech. to the solution limits our space of the solution giving results slightly worse, but saving time.

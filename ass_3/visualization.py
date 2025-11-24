@@ -10,6 +10,7 @@ def load_all_instances(file_path):
     return data
 
 file_path = 'result_B.csv'
+instance_path ='./../TSPB.csv'
 
 data = read_csv_file(file_path)
 print(data.head())
@@ -32,7 +33,6 @@ print(summary.to_string(index=False))
 summary.to_csv('summary_objectives_by_method.csv', index=False)
 
 # load all instances from csv
-instance_path ='TSPB.csv'
 instances = load_all_instances(instance_path)
 print(instances.head())
 
@@ -63,15 +63,19 @@ def plot_instances(data):
 def visualize_best_paths(data, instances):
     methods = data['method'].unique()
     coords = instances.iloc[:, [0, 1]].values
+    costs = instances.iloc[:, 2].values
+    sizes = ((costs - min(costs)) / (max(costs) - min(costs))) * 300
+    print(len(sizes))
+    print(len(coords[:, 1]))
 
     for method in methods:
         method_data = data[data['method'] == method]
         best_row = method_data.loc[method_data['objective'].idxmin()]
         path = list(map(int, best_row['final_selected'].split(';')))
-        title = f"Best path ({method}): objective={best_row['objective']:.1f}"
+        title = "Best path"
 
         plt.figure(figsize=(10, 6))
-        plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=20)
+        plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=sizes)
 
         for i, point in enumerate(coords):
             plt.text(point[0], point[1], str(i), fontsize=9, ha="right")
