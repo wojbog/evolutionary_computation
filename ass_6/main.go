@@ -592,7 +592,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	}{
 		// {"steepest", "nodes", "random"},
 		// {"steepest", "nodes", "greedy"},
-		// {"steepest_multi_start", "edges", "random"},
+		{"steepest_multi_start", "edges", "random"},
 		{"ILS", "edges", "random"},
 		// {"greedy", "nodes", "random"},
 		// {"greedy", "nodes", "greedy"},
@@ -605,6 +605,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 		fmt.Printf("Running method %s with %d runs...\n", methodName, runs)
 
 		finalTour := []int{}
+
 		for run := 0; run < runs; run++ {
 			fmt.Printf(" Run %d/%d\n", run+1, runs)
 			start := time.Now()
@@ -640,54 +641,74 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				runSeed := int64(rnd.Int63()) + int64(run*10000)
 				runRnd := rand.New(rand.NewSource(runSeed))
 
-				tour0, in0 := RandomStart(inst, runRnd)
+				tour_current, inSel_current := RandomStart(inst, runRnd)
 				for {
-					// initial local search
-					// copy tour0
-					tour0_copy := make([]int, len(tour0))
-					copy(tour0_copy, tour0)
+					tour_current, inSel_current, _, _ := RunLocalSearch(inst, tour_current, inSel_current, "steepest", m.intraMode, runRnd)
 
-					tour, inSel, _, _ := RunLocalSearch(inst, tour0_copy, in0, "steepest", m.intraMode, runRnd)
 
-					// perturbation: perform 3 random inter exchanges
-					for p := 0; p < 3; p++ {
+					prev_tLen := TourLength(inst.Dist, tour_current)
+					prev_sCost := SelectedCosts(inst.Nodes, tour_current)
+					prev_obj := prev_tLen + prev_sCost
+					// fmt.Printf(" Current solution obj %d (tour len %d + sel cost %d)\n", prev_obj, prev_tLen, prev_sCost)
+
+					perturbedTour := make([]int, len(tour_current))
+					copy(perturbedTour, tour_current)
+					perturbedInSel := make([]bool, len(inSel_current))
+					copy(perturbedInSel, inSel_current)
+
+					// perturbation: perform 5 random inter exchanges
+					for p := 0; p < 5; p++ {
 						// pick random position in tour
-						pos := runRnd.Intn(len(tour))
+						pos := runRnd.Intn(len(perturbedTour))
 						// pick random unselected node
 						var u int
 						for {
 							u = runRnd.Intn(inst.N)
-							if !inSel[u] {
+							if !perturbedInSel[u] {
 								break
 							}
 						}
 						// apply exchange
-						old := tour[pos]
-						inSel[old] = false
-						inSel[u] = true
-						tour[pos] = u
+						old := perturbedTour[pos]
+						perturbedInSel[old] = false
+						perturbedInSel[u] = true
+						perturbedTour[pos] = u
 					}
-					// local search again
-					tour_copy := make([]int, len(tour))
-					copy(tour_copy, tour)
 
-					tour0, in0, _, _ = RunLocalSearch(inst, tour_copy, inSel, "steepest", m.intraMode, runRnd)
+					// apply 5 intra edges exchanges (2-opt)
+					for p := 0; p < 5; p++ {
+						i := runRnd.Intn(len(perturbedTour))
+						j := runRnd.Intn(len(perturbedTour))
+						if i == j {
+							j = mod(i + 3, len(perturbedTour))
+						}
+						if i > j {
+							i, j = j, i
+						}
+
+						// reverse segment i+1..j
+						start := i + 1
+						end := j
+						for a, b := start, end; a < b; a, b = a+1, b-1 {
+							perturbedTour[a], perturbedTour[b] = perturbedTour[b], perturbedTour[a]
+						}
+					}
+
+
+					tour_current, inSel_current, _, _ = RunLocalSearch(inst, perturbedTour, perturbedInSel, "steepest", m.intraMode, runRnd)
 
 					// compare to previous best
-					tLen := TourLength(inst.Dist, tour0)
-					sCost := SelectedCosts(inst.Nodes, tour0)
+					tLen := TourLength(inst.Dist, tour_current)
+					sCost := SelectedCosts(inst.Nodes, tour_current)
 					obj := tLen + sCost
 
-					prev_tLen := TourLength(inst.Dist, tour)
-					prev_sCost := SelectedCosts(inst.Nodes, tour)
-					prev_obj := prev_tLen + prev_sCost
 
 					if obj < prev_obj {
-						fmt.Printf(" improvement found (obj %d < %d), continuing\n", obj, prev_obj)
+						// fmt.Printf("improvement found (obj %d < %d), continuing\n", obj, prev_obj)
 						continue
 					} else {
-						fmt.Printf("no improvement (obj %d >= %d), stopping\n", run, obj, prev_obj)
-						finalTour = tour
+						// fmt.Printf("no improvement (obj %d >= %d), stopping\n", obj, prev_obj)
+						finalTour = tour_current
 						break
 					}
 
