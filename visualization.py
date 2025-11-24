@@ -9,8 +9,8 @@ def load_all_instances(file_path):
     data = pd.read_csv(file_path, sep=';')
     return data
 
-file_path = 'res_5_b.csv'
-instance_path ='TSPB.csv'
+file_path = './ass_3/result_A.csv'
+instance_path ='./TSPA.csv'
 
 data = read_csv_file(file_path)
 print(data.head())

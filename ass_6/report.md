@@ -44,11 +44,14 @@ nearest integer.
 |steepest_intra:nodes_start:random  |81322|95342|87939.335 |
 |**steepest_intra:edges_start:random**  |71246|78153|73699.995 |
 |steepest_intra:edges_start:random with Cand mech. |73076 |85487 |77866.91 |
+|steepest_lm_intra:edges_start:random|75245 | 82747 | 78856.275|
 
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
+|multi_steepest_intra:edges_start:random|70341 | 72017 | 71240.4|
+|iterative_ls|69134 | 70021 | 69232.20|
+
 
 ### Instance B
 | Method                        | Best | Worst | Average |
@@ -69,12 +72,14 @@ nearest integer.
 |steepest_intra:nodes_start:random  |55686 | 71546 | 62955.885|
 |**steepest_intra:edges_start:random**  |45903 | 51416 | 48195.845|
 |steepest_intra:edges_start:random with Cand. Mech. | 45798 | 52670 | 48474.64 |
+|steepest_lm_intra:edges_start:random|49441 | 56187 |52214.715 |
 
-
+43,546.80 (43,446, 43,963)
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|45941 | 51587 |48214.715 |
+|multi_steepest_intra:edges_start:random|45237 | 50416 | 47943.87 |
+|iterative_ls|43786 | 45763 | 43654.98|
 
 ## Steepest with LM Mechanism results' path
 
@@ -104,11 +109,14 @@ nearest integer.
 |steepest_intra:nodes_start:random   |0.049 |0.142  |0.071 |
 |**steepest_intra:edges_start:random**   |0.039 |0.050  |0.045 |
 |steepest_intra:edges_start:random with Can. Mech. |0.008 |0.019 |0.011 |
+|steepest_lm_intra:edges_start:random|0.025|0.049|0.039|
 
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
+|multi_steepest_intra:edges_start:random|75245 | 82747 | 78856.275|
+|iterative_ls|75245 | 82747 | 78856.275|
+
 
 ## Instance B
 
@@ -123,10 +131,16 @@ nearest integer.
 |steepest_intra:nodes_start:random   |0.048  |0.086   |0.063|
 |**steepest_intra:edges_start:random**   |0.038  |0.054   |0.045|
 |steepest_intra:edges_start:random with CAn. Mech. | 0.009 |0.05 |0.012 |
+|steepest_lm_intra:edges_start:random|0.020|0.053|0.038|
+
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|steepest_lm_intra:edges_start:random|0.020|0.053|0.035|
+|multi_steepest_intra:edges_start:random|75245 | 82747 | 78856.275|
+|iterative_ls|75245 | 82747 | 78856.275|
+
+
+
 # Conclusions
 
-The implemented LM mechanism improved time significantly, but the results are slightly worse than the steepest algorithm without LM mechanism. Adding cash mech. to the solution limits our space of the solution giving results slightly worse, but saving time.
+MSLS often depends on random initialization, which causes many searches to be wasted as they converge to shallow local minima and fail to leverage strong solutions. In contrast, ILS makes more efficient use of the available time by concentrating its search around promising regions of the solution space instead of repeatedly restarting from scratch.
