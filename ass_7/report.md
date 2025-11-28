@@ -19,8 +19,12 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-<!-- ![](./pseudocode.png) -->
-# TODO
+![](./destroy.png)
+![](./repair.png)
+![](./lns_search.png)
+![](./lns_no_search.png)
+
+
 
 
 # Results
@@ -45,16 +49,26 @@ nearest integer.
 |steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:nodes_start:greedy  |70626|73004|71615.93  |
 |steepest_intra:nodes_start:random  |81322|95342|87939.335 |
-|**steepest_intra:edges_start:random**  |71246|78153|73699.995 |
+|steepest_intra:edges_start:random**  |71246|78153|73699.995 |
 |steepest_intra:edges_start:random with Cand mech. |73076 |85487 |77866.91 |
 |steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
+|ILS_intra:edges_start:random |70135 | 72831 |71094.05|
+|steepest_multi_start_intra:edges_start:random| 70518 |72995|71665.45|
 
 ### New Methods Results
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-| ILS_intra:edges_start:random |71135 | 75538 |72894.05|
-| steepest_multi_start_intra:edges_start:random| 70818 |71799|71365.45 |
+|LNS_no_search_intra:edges_start:random|73877|100946|81003.805|
+|LNS_with_search_intra:edges_start:random|69646|72165|70830.13|
+
+
+### Number of main loops iterations
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
+|LNS_no_search_intra:edges_start:random|5|31|17.97|
+|LNS_with_search_intra:edges_start:random|1|7|2.8|
 
 
 ## Instance B
@@ -74,34 +88,44 @@ nearest integer.
 |steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
 |steepest_intra:nodes_start:greedy  |46371 | 55385 | 50201.47 |
 |steepest_intra:nodes_start:random  |55686 | 71546 | 62955.885|
-|steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
+|steepest_intra:edges_start:random |45903 | 51416 | 48195.845|
 |steepest_intra:edges_start:random with Cand. Mech. | 45798 | 52670 | 48474.64 |
 |steepest_lm_intra:edges_start:random|45941 | 51587 |48214.715 |
+|ILS_intra:edges_start:random|45250|46331|45749.15|
+|steepest_multi_start_intra:edges_start:random|46272|51158|48124.05|
+
+
 
 ### New Methods Results
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|ILS_intra:edges_start:random|45250|46331|45749.15|
-|steepest_multi_start_intra:edges_start:random|46272|51158|48124.05|
+|LNS_no_search_intra:edges_start:random|48815|72910|57516.195|
+|LNS_with_search_intra:edges_start:random|43830|48594|45299.75|
 
+### Number of main loops iterations
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
+|LNS_no_search_intra:edges_start:random|7|33|17.485|
+|LNS_with_search_intra:edges_start:random|1|7|2.92|
 
 # Paths visualization
 ## Instance A
 
-### Steepest with random starts
-![](./best_path_steepest_multi_start_intra_edges_start_random_A.png)
+### LNS without local search variant
+![](./best_path_LNS_no_search_intra_edges_start_random_A.png)
 
-### Iterated Local Search 
-![](./best_path_ILS_intra_edges_start_random_A.png)
+### LNS with local search variant
+![](./best_path_LNS_with_search_intra_edges_start_random_A.png)
 
 ## Instance B
 
-### Steepest with random starts
-![](./best_path_steepest_multi_start_intra_edges_start_random_B.png)
+### LNS without local search variant
+![](./best_path_LNS_no_search_intra_edges_start_random_B.png)
 
-### Iterated Local Search 
-![](./best_path_ILS_intra_edges_start_random_B.png)
+### LNS with local search variant
+![](./best_path_LNS_with_search_intra_edges_start_random_B.png)
 
 # Time
 
@@ -116,21 +140,22 @@ nearest integer.
 |steepest_intra:edges_start:greedy   |0.001 |0.005  |0.002 |
 |steepest_intra:nodes_start:greedy   |0.000 |0.005  |0.002 |
 |steepest_intra:nodes_start:random   |0.049 |0.142  |0.071 |
-|**steepest_intra:edges_start:random**   |0.039 |0.050  |0.045 |
+|steepest_intra:edges_start:random   |0.039 |0.050  |0.045 |
 |steepest_intra:edges_start:random with Can. Mech. |0.008 |0.019 |0.011 |
 |steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
+|ILS_intra:edges_start:random|0.053|0.297|0.09|
+|steepest_multi_start_intra:edges_start:random|10.296|10.524|10.406|
 
 ### New Methods Results
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|ILS_intra:edges_start:random|0.053|0.297|0.09|
-|steepest_multi_start_intra:edges_start:random|10.296|10.524|10.406|
+|LNS_no_search_intra:edges_start:random|0.023|0.19|0.09|
+|LNS_with_search_intra:edges_start:random|0.032|0.082|0.048|
 
 ## Instance B
 
-
-| Method  | min | max | average|
+| Method  | min | max | average |
 |----------|----:|:-------:|:---------:|
 |greedy_intra:edges_start:greedy     |0.0    |0.01    |0.004|
 |greedy_intra:edges_start:random     |0.064  |0.102   |0.081|
@@ -139,16 +164,18 @@ nearest integer.
 |steepest_intra:edges_start:greedy   |0.001  |0.01    |0.004|
 |steepest_intra:nodes_start:greedy   |0.001  |0.007   |0.004|
 |steepest_intra:nodes_start:random   |0.048  |0.086   |0.063|
-|**steepest_intra:edges_start:random**   |0.038  |0.054   |0.045|
+|steepest_intra:edges_start:random   |0.038  |0.054   |0.045|
 |steepest_intra:edges_start:random with CAn. Mech. | 0.009 |0.05 |0.012 |
 |steepest_lm_intra:edges_start:random|0.020|0.053|0.035|
-
-
-| Method  | min | max | average|
-|----------|----:|:-------:|:---------:|
 |ILS_intra:edges_start:random|0.054|0.177|0.079|
 |steepest_multi_start_intra:edges_start:random|10.358|13.195|10.869|
 
+| Method  | min | max | average|
+|----------|----:|:-------:|:---------:|
+|LNS_no_search_intra:edges_start:random|0.035|0.181|0.088|
+|LNS_with_search_intra:edges_start:random|0.034|0.097|0.052|
+
 # Conclusions
 
+LMS performed the best among all tested methods, achieving the lowest average costs for both instances A and B. Its strategy of exploring multiple starting points allowed it to escape local minima effectively, leading to superior solutions. Moreover, its computational time was reasonable given the quality of solutions obtained.
 

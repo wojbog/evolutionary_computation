@@ -1,0 +1,29 @@
+function SteepestLocalSearch(solution)
+	returns Solution solution, bool changed:
+    
+    REPEAT:
+      best_delta = 0
+      best_move = NULL
+
+      FOR i=0 to solution.tourLength - 1:
+          FOR j = i+1 to solution.tourLength-1:
+              delta = calculateDeltaIntra(solution, i, j)
+              IF delta < best_delta:
+                best_delta = delta
+                best_move = INTRA(i,j)
+
+      FOR i=0 to solution.tourLength - 1:
+          for j=0 to totalNodes - 1:
+              if j in solution.selected:
+                  continue
+
+              delta = calculateDeltaInter(solution, i, j)
+              best_move = INTER(i,j)
+		
+      if best_delta = 0:
+      	if best_move = NULL:
+        	return solution, False
+        
+       
+      	new_solution = applyMove(bestMove)
+        return new_solution, True

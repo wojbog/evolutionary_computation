@@ -40,6 +40,7 @@ type ResultRow struct {
 	Improvements  int
 	FinalSelected []int
 	Seed          int64
+	iterations	  int
 }
 
 // Utility: read instance CSV of rows: x,y,cost (integers), no header
@@ -360,6 +361,7 @@ func LocalSearchGreedy(inst *Instance, tour []int, inSel []bool, intraMode strin
 	// - intra actions as pairs (i,j) (for nodes swap or 2-opt), enumerated but shuffled
 	// - inter actions as (pos, u) enumerated but we'll shuffle pos list and for each pos produce randomized candidate unselected nodes
 	// We'll interleave by alternating trying an intra move then an inter move until we find an improving move.
+
 	// Enumerate intra moves indices and shuffle
 	intraPairs := make([][2]int, 0)
 	// edges (2-opt): consider i < j and not adjacent as separate moves as typical 2-opt
@@ -570,6 +572,129 @@ func RunLocalSearch(inst *Instance, tour []int, inSel []bool, mode string, intra
 	return tourCopy, inCopy, evalsTotal, improvements
 }
 
+func destroy(inst *Instance, tour []int, inSel []bool, destroySize int, rnd *rand.Rand) (newTour []int, newInSel []bool) {
+	K := inst.K
+	N := inst.N
+
+	// remove destroySize nodes from tour, with probability proportional to their costs
+	removed := make(map[int]bool)
+	costs := make([]int, K)
+	totalCost := 0
+	for i, v := range tour {
+		c := inst.Nodes[v].Cost
+		costs[i] = c
+		totalCost += c
+	}
+
+	for len(removed) < destroySize {
+		r := rnd.Intn(totalCost)
+		acc := 0
+		for i, c := range costs {
+			if removed[i] {
+				continue
+			}
+			acc += c
+			if r < acc {
+				removed[i] = true
+				break
+			}
+		}
+
+	}
+	
+	newTour = make([]int, 0, K-destroySize)
+	newInSel = make([]bool, N)
+	for i, v := range tour {
+		if !removed[i] {
+			newTour = append(newTour, v)
+			newInSel[v] = true
+		}
+	}
+	return newTour, newInSel
+}
+
+func repairGreedyRegret(inst *Instance, partialTour []int, inSel []bool, rnd *rand.Rand) (newTour []int, newInSel []bool) {
+	K := inst.K
+	D := inst.Dist
+	nodes := inst.Nodes
+	N := inst.N
+
+	newTour = make([]int, len(partialTour))
+	copy(newTour, partialTour)
+	newInSel = make([]bool, N)
+	for _, v := range partialTour {
+		newInSel[v] = true
+	}
+	for countSelected(newInSel) < K {
+		type cand struct {
+			node, bestTot, secondTot, bestPos int
+			score                             float64
+		}
+		var cands []cand
+		for v := 0; v < N; v++ {
+			if newInSel[v] {
+				continue
+			}
+			bestInc, bestPos := bestInsertion(v, newTour, D)
+			secondInc := math.MaxInt
+			for i := 0; i < len(newTour); i++ {
+				a := newTour[i]
+				b := newTour[(i+1)%len(newTour)]
+				inc := D[a][v] + D[v][b] - D[a][b]
+				if inc < secondInc && i+1 != bestPos {
+					secondInc = inc
+				}
+			}
+			if secondInc == math.MaxInt {
+				secondInc = bestInc
+			}
+			bestTot := bestInc + nodes[v].Cost
+			secondTot := secondInc + nodes[v].Cost
+			regret := secondTot - bestTot
+			score := float64(regret) - float64(bestTot)
+			cands = append(cands, cand{v, bestTot, secondTot, bestPos, score})
+		}
+		// pick best candidate
+		sort.Slice(cands, func(a, b int) bool { return cands[a].score > cands[b].score })
+		ch := cands[0]
+		newInSel[ch.node] = true
+		newTour = insertAt(newTour, ch.bestPos, ch.node)
+	}
+	return newTour, newInSel
+}
+
+
+
+func runLNS(inst *Instance, tour []int, inSel []bool, mode string, lnsWithSearch bool, rnd *rand.Rand) (finalTour []int, finalInSel []bool, evalsTotal int, improvements int, iterations int) {
+	if lnsWithSearch {
+		tour, inSel, _, _ = RunLocalSearch(inst, tour, inSel, "steepest", "edges", rnd)
+	}
+
+	for iter := 0; ; iter++ {
+		destroySize := inst.K / 3
+
+		objBefore := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
+
+		tourBeforeDestoy := make([]int, len(tour))
+		copy(tourBeforeDestoy, tour)
+		inSelBeforeDestroy := make([]bool, len(inSel))
+		copy(inSelBeforeDestroy, inSel)
+
+		tour, inSel = destroy(inst, tour, inSel, destroySize, rnd)
+		tour, inSel = repairGreedyRegret(inst, tour, inSel, rnd)
+
+		if lnsWithSearch {
+			tour, inSel, _, improvements = RunLocalSearch(inst, tour, inSel, "steepest", "edges", rnd)
+		}
+
+		objAfter := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
+
+		if objAfter >= objBefore {
+			return tourBeforeDestoy, inSelBeforeDestroy, evalsTotal, improvements, iter
+		}
+	}
+}
+
 func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	rnd := rand.New(rand.NewSource(seed))
 	outFile, err := os.Create(outPath)
@@ -581,7 +706,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	defer w.Flush()
 
 	// write header
-	if err := w.Write([]string{"method", "run", "objective", "tour_length", "selected_costs", "evaluations", "improvements", "final_selected", "seed", "duration_ms"}); err != nil {
+	if err := w.Write([]string{"method", "run", "objective", "tour_length", "selected_costs", "evaluations", "improvements", "final_selected", "seed", "duration_s", "main_loop_iterations"}); err != nil {
 		return err
 	}
 
@@ -590,131 +715,42 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 		intraMode string // "nodes" or "edges"
 		startType string // "random" or "greedy"
 	}{
-		// {"steepest", "nodes", "random"},
-		// {"steepest", "nodes", "greedy"},
-		{"steepest_multi_start", "edges", "random"},
-		{"ILS", "edges", "random"},
-		// {"greedy", "nodes", "random"},
-		// {"greedy", "nodes", "greedy"},
-		// {"greedy", "edges", "random"},
-		// {"greedy", "edges", "greedy"},
+		{"LNS_with_search", "edges", "random"},
+		{"LNS_no_search", "edges", "random"},
 	}
-	// for 20 times
 	for _, m := range methods {
 		methodName := fmt.Sprintf("%s_intra:%s_start:%s", m.mode, m.intraMode, m.startType)
 		fmt.Printf("Running method %s with %d runs...\n", methodName, runs)
-
-		finalTour := []int{}
-
 		for run := 0; run < runs; run++ {
-			fmt.Printf(" Run %d/%d\n", run+1, runs)
-			start := time.Now()
+			// create a per-run RNG so results are reproducible
+			runSeed := int64(rnd.Int63())
+			runRnd := rand.New(rand.NewSource(runSeed))
 
-			if m.mode == "steepest_multi_start" {
-				// create a per-run RNG so results are reproducible
-				best_obj := math.MaxInt
-
-				for startAttempt := 0; startAttempt < 200; startAttempt++ {
-					var tour []int
-					var inSel []bool
-					runSeed := int64(rnd.Int63()) + int64(startAttempt*10000)
-
-					runRnd := rand.New(rand.NewSource(runSeed))
-
-					tour0, in0 := RandomStart(inst, runRnd)
-					tour = tour0
-					inSel = in0
-
-					// run local search
-
-					tour, _, _, _ = RunLocalSearch(inst, tour, inSel, m.mode, m.intraMode, runRnd)
-					// compute objective
-					tLen := TourLength(inst.Dist, tour)
-					sCost := SelectedCosts(inst.Nodes, tour)
-					obj := tLen + sCost
-					if obj < best_obj {
-						best_obj = obj
-						finalTour = tour
-					}
-				}
-			} else if m.mode == "ILS" {
-				runSeed := int64(rnd.Int63()) + int64(run*10000)
-				runRnd := rand.New(rand.NewSource(runSeed))
-
-				tour_current, inSel_current := RandomStart(inst, runRnd)
-				for {
-					tour_current, inSel_current, _, _ := RunLocalSearch(inst, tour_current, inSel_current, "steepest", m.intraMode, runRnd)
-
-
-					prev_tLen := TourLength(inst.Dist, tour_current)
-					prev_sCost := SelectedCosts(inst.Nodes, tour_current)
-					prev_obj := prev_tLen + prev_sCost
-					// fmt.Printf(" Current solution obj %d (tour len %d + sel cost %d)\n", prev_obj, prev_tLen, prev_sCost)
-
-					perturbedTour := make([]int, len(tour_current))
-					copy(perturbedTour, tour_current)
-					perturbedInSel := make([]bool, len(inSel_current))
-					copy(perturbedInSel, inSel_current)
-
-					// perturbation: perform 5 random inter exchanges
-					for p := 0; p < 5; p++ {
-						// pick random position in tour
-						pos := runRnd.Intn(len(perturbedTour))
-						// pick random unselected node
-						var u int
-						for {
-							u = runRnd.Intn(inst.N)
-							if !perturbedInSel[u] {
-								break
-							}
-						}
-						// apply exchange
-						old := perturbedTour[pos]
-						perturbedInSel[old] = false
-						perturbedInSel[u] = true
-						perturbedTour[pos] = u
-					}
-
-					// apply 5 intra edges exchanges (2-opt)
-					for p := 0; p < 5; p++ {
-						i := runRnd.Intn(len(perturbedTour))
-						j := runRnd.Intn(len(perturbedTour))
-						if i == j {
-							j = mod(i + 3, len(perturbedTour))
-						}
-						if i > j {
-							i, j = j, i
-						}
-
-						// reverse segment i+1..j
-						start := i + 1
-						end := j
-						for a, b := start, end; a < b; a, b = a+1, b-1 {
-							perturbedTour[a], perturbedTour[b] = perturbedTour[b], perturbedTour[a]
-						}
-					}
-
-
-					tour_current, inSel_current, _, _ = RunLocalSearch(inst, perturbedTour, perturbedInSel, "steepest", m.intraMode, runRnd)
-
-					// compare to previous best
-					tLen := TourLength(inst.Dist, tour_current)
-					sCost := SelectedCosts(inst.Nodes, tour_current)
-					obj := tLen + sCost
-
-
-					if obj < prev_obj {
-						// fmt.Printf("improvement found (obj %d < %d), continuing\n", obj, prev_obj)
-						continue
-					} else {
-						// fmt.Printf("no improvement (obj %d >= %d), stopping\n", obj, prev_obj)
-						finalTour = tour_current
-						break
-					}
-
-				}
+			var tour []int
+			var inSel []bool
+			if m.startType == "random" {
+				tour0, in0 := RandomStart(inst, runRnd)
+				tour = tour0
+				inSel = in0
+			} else {
+				// greedy start: use starting node = run % N (to emulate using different starting nodes)
+				startNode := run % inst.N
+				tour0, in0 := GreedyRegretStart(inst, startNode)
+				tour = tour0
+				inSel = in0
 			}
 
+			// run local search
+			start := time.Now()
+			var lnsWithSearch bool
+			if m.mode == "LNS_with_search" {
+				lnsWithSearch = true
+			} else {
+				lnsWithSearch = false
+			}
+			///////////
+			finalTour, _, evals, imps, iterations := runLNS(inst, tour, inSel, m.mode, lnsWithSearch,  runRnd)
+			///////////
 			elapsed := time.Since(start)
 			elapsedS := strconv.FormatFloat(elapsed.Seconds(), 'f', 6, 64)
 			// compute objective values for output
@@ -733,11 +769,12 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				strconv.Itoa(obj),
 				strconv.Itoa(tLen),
 				strconv.Itoa(sCost),
-				"-1", // strconv.Itoa(evals),
-				"-1", //strconv.Itoa(imps),
+				strconv.Itoa(evals),
+				strconv.Itoa(imps),
 				strings.Join(strSel, ";"),
-				"-1", // strconv.FormatInt(runSeed, 10),
+				strconv.FormatInt(runSeed, 10),
 				elapsedS,
+				strconv.Itoa(iterations),
 			}); err != nil {
 				return err
 			}
@@ -754,7 +791,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 func main() {
 	inPath := flag.String("in", "", "input CSV file path (rows: x,y,cost)")
 	outPath := flag.String("out", "result.csv", "output CSV results path")
-	runs := flag.Int("runs", 20, "number of runs per method")
+	runs := flag.Int("runs", 200, "number of runs per method")
 	seed := flag.Int64("seed", time.Now().UnixNano(), "random seed")
 	flag.Parse()
 	if *inPath == "" || *outPath == "" {
