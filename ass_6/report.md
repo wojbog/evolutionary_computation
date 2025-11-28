@@ -19,7 +19,9 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-<!-- ![](./pseudocode.png) -->
+![](./mls.png)
+![](./ils.png)
+
 # TODO
 
 
@@ -151,4 +153,6 @@ nearest integer.
 
 # Conclusions
 
+The results demonstrate that the newly implemented methods, particularly `ILS_intra:edges_start:random` and `steepest_multi_start_intra:edges_start:random`, outperform many of the previously tested methods in terms of solution quality. For both instances A and B, these methods achieved lower average costs and competitive best-case results compared to other approaches.
 
+The `steepest_multi_start_intra:edges_start:random` method, while computationally more expensive, consistently produced high-quality solutions, indicating its robustness and effectiveness for the problem at hand. On the other hand, `ILS_intra:edges_start:random` provided a good balance between computational efficiency and solution quality, making it a practical choice for scenarios with limited computational resources.
