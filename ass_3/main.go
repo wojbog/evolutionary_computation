@@ -16,7 +16,7 @@ import (
 )
 
 // Node holds coordinate and cost
-type Node struct {
+type  Node struct {
 	X, Y int
 	Cost int
 }
