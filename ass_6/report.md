@@ -118,7 +118,7 @@ nearest integer.
 |steepest_intra:edges_start:greedy   |0.001 |0.005  |0.002 |
 |steepest_intra:nodes_start:greedy   |0.000 |0.005  |0.002 |
 |steepest_intra:nodes_start:random   |0.049 |0.142  |0.071 |
-|**steepest_intra:edges_start:random**   |0.039 |0.050  |0.045 |
+|steepest_intra:edges_start:random  |0.039 |0.050  |0.045 |
 |steepest_intra:edges_start:random with Can. Mech. |0.008 |0.019 |0.011 |
 |steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
 
