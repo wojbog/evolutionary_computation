@@ -47,7 +47,7 @@ nearest integer.
 |steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:nodes_start:greedy  |70626|73004|71615.93  |
 |steepest_intra:nodes_start:random  |81322|95342|87939.335 |
-|**steepest_intra:edges_start:random**  |71246|78153|73699.995 |
+|steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:edges_start:random with Cand mech. |73076 |85487 |77866.91 |
 |steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
 
