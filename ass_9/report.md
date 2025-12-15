@@ -19,10 +19,104 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-![](./mls.png)
-![](./ils.png)
+```
+OPERATOR_1(P1, P2)
 
-# TODO
+Input:
+    P1, P2 : parent solutions (tours)
+
+Output:
+    Offspring solution
+
+1. Extract edge sets E1 from P1 and E2 from P2
+2. Identify common edges E = E1 ∩ E2
+
+3. Initialize empty list of subpaths
+4. Mark all nodes as unvisited
+
+5. For each node v in P1 (in tour order):
+       If v is unvisited:
+           Start new subpath S ← [v]
+           Mark v as visited
+           While the next edge (v, u) is in E and u is unvisited:
+               Append u to S
+               Mark u as visited
+               v ← u
+           Add S to subpaths
+
+6. Let targetSize ← 50% of total nodes
+7. While number of selected nodes < targetSize:
+       Select a random unvisited node r
+       Add subpath [r] to subpaths
+       Mark r as visited
+
+8. Randomly shuffle the list of subpaths
+
+9. Initialize empty offspring solution
+10. For each subpath S in shuffled order:
+        With probability 0.5, reverse S
+        Append S to offspring
+
+11. Return offspring
+```
+```
+OPERATOR_2(P1, P2)
+
+Input:
+    P1, P2 : parent solutions (tours)
+
+Output:
+    Offspring solution
+
+1. Randomly select one parent as base solution B
+2. Let O be the other parent
+
+3. Initialize offspring as empty list
+
+4. For each node v in B (in order):
+       If v is present in O:
+           Append v to offspring
+
+5. Identify removed nodes R:
+       R ← nodes in B not present in offspring
+
+6. For each node r in R:
+       Insert r into offspring using LNS repair heuristic
+       (e.g., cheapest insertion)
+
+7. Return offspring
+```
+```
+Main Loop
+
+1. Initialize population P with 20 solutions
+2. Apply local search to each solution
+3. Remove duplicate solutions from P
+
+4. While stopping condition not met:
+
+       4.1 Select two parents P1 and P2 uniformly at random from P
+
+       4.2 With probability 0.5:
+               Offspring ← OPERATOR_1(P1, P2)
+           Else:
+               Offspring ← OPERATOR_2(P1, P2)
+
+       4.3 If operator = OPERATOR_2 and LS-disabled variant:
+               Skip local search
+           Else:
+               Apply local search to Offspring
+
+       4.4 If Offspring is duplicate of a solution in P:
+               Discard Offspring and continue
+
+       4.5 Insert Offspring into P
+
+       4.6 If |P| > 20:
+               Remove worst solution from P
+
+5. Return best solution in P
+```
 
 
 # Results
@@ -50,8 +144,8 @@ nearest integer.
 |steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:edges_start:random with Cand mech. |73076 |85487 |77866.91 |
 |steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
-|ILS_intra:edges_start:random |71135 | 75538 |72894.05|
-|steepest_multi_start_intra:edges_start:random| 70818 |71799|71365.45 |
+|ILS_intra:edges_start:random |70901 | 71862 |71303.60|
+|steepest_multi_start_intra:edges_start:random| 71149  |  72794 | 71299.05|
 
 ### Hybrid evolutionary algorithm
 
@@ -60,6 +154,15 @@ nearest integer.
 |Operator1|69875|70843|70518.45|
 |Operator2|70154|72087|71630.65|
 |Operator2_without_LS|70233|71965|71397.2|
+
+
+### Hybrid evolutionary algorithm Runs
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
+|Operator1|703|891|793.35|
+|Operator2|10297|18745|12329.00|
+|Operator2_without_LS|10245|18921|12637.00|
 
 
 
@@ -83,8 +186,8 @@ nearest integer.
 |steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
 |steepest_intra:edges_start:random with Cand. Mech. | 45798 | 52670 | 48474.64 |
 |steepest_lm_intra:edges_start:random|45941 | 51587 |48214.715 |
-|ILS_intra:edges_start:random|45250|46331|45749.15|
-|steepest_multi_start_intra:edges_start:random|46272|51158|48124.05|
+|ILS_intra:edges_start:random|45320    |46753   |45463.3|
+|steepest_multi_start_intra:edges_start:random|45405    |46222   |45767.4|
 
 ### Hybrid evolutionary algorithm
 
@@ -93,6 +196,14 @@ nearest integer.
 |Operator1|43924|45040|44757.4|
 |Operator2|44244|45547|44894.6|
 |Operator2_without_LS|44268|45724|44679.9|
+
+### Hybrid evolutionary algorithm Runs
+
+| Method  | best | worst | average|
+|----------|----:|:-------:|:---------:|
+|Operator1|656|794|693.57|
+|Operator2|8143|20983|12276.98|
+|Operator2_without_LS|8167|20872|12561.34|
 
 
 # Paths visualization
@@ -134,8 +245,8 @@ nearest integer.
 |steepest_intra:edges_start:random   |0.039 |0.050  |0.045 |
 |steepest_intra:edges_start:random with Can. Mech. |0.008 |0.019 |0.011 |
 |steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
-|ILS_intra:edges_start:random|0.053|0.297|0.09|
-|steepest_multi_start_intra:edges_start:random|10.296|10.524|10.406|
+|ILS_intra:edges_start:random|4.805 | 4.815 | 4.811|
+|steepest_multi_start_intra:edges_start:random|4.443|5.99|4.805|
 
 ### New Methods Results
 
@@ -160,8 +271,8 @@ nearest integer.
 |steepest_intra:edges_start:random   |0.038  |0.054   |0.045|
 |steepest_intra:edges_start:random with CAn. Mech. | 0.009 |0.05 |0.012 |
 |steepest_lm_intra:edges_start:random|0.020|0.053|0.035|
-|ILS_intra:edges_start:random|0.054|0.177|0.079|
-|steepest_multi_start_intra:edges_start:random|10.358|13.195|10.869|
+|ILS_intra:edges_start:random| 4.499  |  4.515   |  4.503 |
+|steepest_multi_start_intra:edges_start:random|4.377   |  5.077    | 4.498|
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
@@ -170,3 +281,6 @@ nearest integer.
 |Operator2_without_LS|-|-|as MSLS|
 
 # Conclusions
+
+- Algorithm with Operator 1 gave better results with compare to operator 2 for both cases.
+- Offspring produced by Operator 1 often differ substantially from their parents, leading the algorithm to explore a broader portion of the solution space and increasing the running time of the local search.
