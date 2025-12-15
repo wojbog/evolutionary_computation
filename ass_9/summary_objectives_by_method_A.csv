@@ -1,0 +1,4 @@
+method,min_obj,max_obj,mean_obj
+Operator1,69875,70843,70518.45
+Operator2,72154,73087,72630.65
+Operator2_without_LS,72233,72665,72397.2
