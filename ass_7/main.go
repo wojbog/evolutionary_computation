@@ -666,11 +666,16 @@ func repairGreedyRegret(inst *Instance, partialTour []int, inSel []bool, rnd *ra
 
 
 func runLNS(inst *Instance, tour []int, inSel []bool, mode string, lnsWithSearch bool, rnd *rand.Rand) (finalTour []int, finalInSel []bool, evalsTotal int, improvements int, iterations int) {
+	expTime := time.Now()
+	end_time := expTime.Add(4*time.Second + 800*time.Millisecond)
+
 	if lnsWithSearch {
 		tour, inSel, _, _ = RunLocalSearch(inst, tour, inSel, "steepest", "edges", rnd)
 	}
 
-	for iter := 0; ; iter++ {
+	iter := 0
+
+	for ; expTime.Before(end_time); expTime = time.Now() {
 		destroySize := inst.K / 3
 
 		objBefore := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
@@ -692,6 +697,7 @@ func runLNS(inst *Instance, tour []int, inSel []bool, mode string, lnsWithSearch
 		if objAfter >= objBefore {
 			return tourBeforeDestoy, inSelBeforeDestroy, evalsTotal, improvements, iter
 		}
+		iter++;
 	}
 }
 
