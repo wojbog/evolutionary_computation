@@ -581,7 +581,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	defer w.Flush()
 
 	// write header
-	if err := w.Write([]string{"method", "run", "objective", "tour_length", "selected_costs", "evaluations", "improvements", "final_selected", "seed", "duration_ms"}); err != nil {
+	if err := w.Write([]string{"method", "run", "objective", "tour_length", "selected_costs", "evaluations", "improvements", "final_selected", "seed", "duration_ms", "LS_evals"}); err != nil {
 		return err
 	}
 
@@ -592,8 +592,10 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 	}{
 		// {"steepest", "nodes", "random"},
 		// {"steepest", "nodes", "greedy"},
+
 		{"steepest_multi_start", "edges", "random"},
 		{"ILS", "edges", "random"},
+
 		// {"greedy", "nodes", "random"},
 		// {"greedy", "nodes", "greedy"},
 		// {"greedy", "edges", "random"},
@@ -604,7 +606,10 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 		methodName := fmt.Sprintf("%s_intra:%s_start:%s", m.mode, m.intraMode, m.startType)
 		fmt.Printf("Running method %s with %d runs...\n", methodName, runs)
 
-		finalTour := []int{}
+		bestTour := []int{}
+		bestObj := math.MaxInt
+
+		no_of_LS_evals := 0
 
 		for run := 0; run < runs; run++ {
 			fmt.Printf(" Run %d/%d\n", run+1, runs)
@@ -634,7 +639,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 					obj := tLen + sCost
 					if obj < best_obj {
 						best_obj = obj
-						finalTour = tour
+						bestTour = tour
 					}
 				}
 			} else if m.mode == "ILS" {
@@ -642,14 +647,21 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				runRnd := rand.New(rand.NewSource(runSeed))
 
 				tour_current, inSel_current := RandomStart(inst, runRnd)
-				for {
+				start_time := time.Now()
+				// loop while 10.406s not exceeded
+				for time.Since(start_time) < 4*time.Second+498*time.Millisecond {
 					tour_current, inSel_current, _, _ := RunLocalSearch(inst, tour_current, inSel_current, "steepest", m.intraMode, runRnd)
-
+					no_of_LS_evals += 1
 
 					prev_tLen := TourLength(inst.Dist, tour_current)
 					prev_sCost := SelectedCosts(inst.Nodes, tour_current)
 					prev_obj := prev_tLen + prev_sCost
 					// fmt.Printf(" Current solution obj %d (tour len %d + sel cost %d)\n", prev_obj, prev_tLen, prev_sCost)
+					if bestObj > prev_obj {
+						bestObj = prev_obj
+						bestTour = tour_current
+					}
+
 
 					perturbedTour := make([]int, len(tour_current))
 					copy(perturbedTour, tour_current)
@@ -657,7 +669,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 					copy(perturbedInSel, inSel_current)
 
 					// perturbation: perform 5 random inter exchanges
-					for p := 0; p < 5; p++ {
+					for range 5 {
 						// pick random position in tour
 						pos := runRnd.Intn(len(perturbedTour))
 						// pick random unselected node
@@ -676,7 +688,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 					}
 
 					// apply 5 intra edges exchanges (2-opt)
-					for p := 0; p < 5; p++ {
+					for range 5 {
 						i := runRnd.Intn(len(perturbedTour))
 						j := runRnd.Intn(len(perturbedTour))
 						if i == j {
@@ -696,20 +708,16 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 
 
 					tour_current, inSel_current, _, _ = RunLocalSearch(inst, perturbedTour, perturbedInSel, "steepest", m.intraMode, runRnd)
+					no_of_LS_evals += 1
 
 					// compare to previous best
 					tLen := TourLength(inst.Dist, tour_current)
 					sCost := SelectedCosts(inst.Nodes, tour_current)
 					obj := tLen + sCost
 
-
-					if obj < prev_obj {
-						// fmt.Printf("improvement found (obj %d < %d), continuing\n", obj, prev_obj)
-						continue
-					} else {
-						// fmt.Printf("no improvement (obj %d >= %d), stopping\n", obj, prev_obj)
-						finalTour = tour_current
-						break
+					if obj < bestObj {
+						bestObj = obj
+						bestTour = tour_current
 					}
 
 				}
@@ -718,14 +726,14 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 			elapsed := time.Since(start)
 			elapsedS := strconv.FormatFloat(elapsed.Seconds(), 'f', 6, 64)
 			// compute objective values for output
-			tLen := TourLength(inst.Dist, finalTour)
-			sCost := SelectedCosts(inst.Nodes, finalTour)
+			tLen := TourLength(inst.Dist, bestTour)
+			sCost := SelectedCosts(inst.Nodes, bestTour)
 			obj := tLen + sCost
 
 			// prepare finalSelected list as semicolon separated indices
-			strSel := make([]string, len(finalTour))
-			for i := range finalTour {
-				strSel[i] = strconv.Itoa(finalTour[i])
+			strSel := make([]string, len(bestTour))
+			for i := range bestTour {
+				strSel[i] = strconv.Itoa(bestTour[i])
 			}
 			if err := w.Write([]string{
 				methodName,
@@ -738,6 +746,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 				strings.Join(strSel, ";"),
 				"-1", // strconv.FormatInt(runSeed, 10),
 				elapsedS,
+				strconv.Itoa(no_of_LS_evals),
 			}); err != nil {
 				return err
 			}

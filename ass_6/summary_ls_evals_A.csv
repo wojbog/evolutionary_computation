@@ -1,0 +1,3 @@
+method,min_evals,max_evals,mean_evals
+ILS_intra:edges_start:random,410,7714,4064.5
+steepest_multi_start_intra:edges_start:random,0,0,0.0
