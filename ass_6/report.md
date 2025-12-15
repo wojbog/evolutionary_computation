@@ -55,8 +55,8 @@ nearest integer.
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-| ILS_intra:edges_start:random |71135 | 75538 |72894.05|
-| steepest_multi_start_intra:edges_start:random| 70818 |71799|71365.45 |
+| ILS_intra:edges_start:random | 70901  |  71862 | 71303.60|
+| steepest_multi_start_intra:edges_start:random| 71149  |  72794 | 71299.05|
 
 
 ## Instance B
@@ -84,8 +84,8 @@ nearest integer.
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|ILS_intra:edges_start:random|45250|46331|45749.15|
-|steepest_multi_start_intra:edges_start:random|46272|51158|48124.05|
+|ILS_intra:edges_start:random |45320    |46753   |45463.3|
+|steepest_multi_start_intra:edges_start:random           |45405    |46222   |45767.4|
 
 
 # Paths visualization
@@ -126,8 +126,8 @@ nearest integer.
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|ILS_intra:edges_start:random|0.053|0.297|0.09|
-|steepest_multi_start_intra:edges_start:random|10.296|10.524|10.406|
+|ILS_intra:edges_start:random|4.805 | 4.815 | 4.811|
+|steepest_multi_start_intra:edges_start:random|4.443|5.99|4.805|
 
 ## Instance B
 
@@ -148,8 +148,20 @@ nearest integer.
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|ILS_intra:edges_start:random|0.054|0.177|0.079|
-|steepest_multi_start_intra:edges_start:random|10.358|13.195|10.869|
+|ILS_intra:edges_start:random | 4.499  |  4.515   |  4.503 |
+|steepest_multi_start_intra:edges_start:random|4.377   |  5.077    |  4.498|
+
+# LS evaluations
+
+## Instance A
+| Method  | min | max | average |
+| ----------|----:|:-------:|:---------:|
+|ILS_intra:edges_start:random      |  410     |  7714   | 4064.5|
+
+## Instance B
+| Method  | min | max | average |
+| ----------|----:|:-------:|:---------:|
+| ILS_intra:edges_start:random      |  344   |  7228  |  3786.1
 
 # Conclusions
 
