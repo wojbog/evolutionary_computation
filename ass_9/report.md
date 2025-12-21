@@ -80,9 +80,8 @@ Output:
 5. Identify removed nodes R:
        R ← nodes in B not present in offspring
 
-6. For each node r in R:
-       Insert r into offspring using LNS repair heuristic
-       (e.g., cheapest insertion)
+6. Randomly add nodes
+       
 
 7. Return offspring
 ```
@@ -97,11 +96,8 @@ Main Loop
 
        4.1 Select two parents P1 and P2 uniformly at random from P
 
-       4.2 With probability 0.5:
-               Offspring ← OPERATOR_1(P1, P2)
-           Else:
-               Offspring ← OPERATOR_2(P1, P2)
-
+       4.2 Offspring ← OPERATOR(P1, P2)
+               
        4.3 If operator = OPERATOR_2 and LS-disabled variant:
                Skip local search
            Else:
