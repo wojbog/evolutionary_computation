@@ -22,9 +22,6 @@ nearest integer.
 ![](./mls.png)
 ![](./ils.png)
 
-# TODO
-
-
 # Results
 
 
