@@ -19,13 +19,71 @@ The distances between nodes are calculated using the Euclidean metric, rounded t
 nearest integer.
 
 # Implemented Algorithms
-![](./destroy.png)
-![](./repair.png)
-![](./lns_search.png)
-![](./lns_no_search.png)
+
+```
+FUNCTION LNS_Algorithm(instance, initialTour, lnsWithSearch)
+    currentTour = initialTour
+
+    IF lnsWithSearch IS true THEN
+        currentTour = RunLocalSearch(currentTour, "steepest", "edges")
+
+    bestTour = currentTour
+    
+    WHILE currentTime < averageMSLStime DO
+        destroySize = instance.K / 3
+        partialTour = Destroy_Subpaths(currentTour, destroySize)
+        currentTour = Repair_Regret(partialTour, instance)
+        
+        IF lnsWithSearch IS true THEN
+            currentTour = RunLocalSearch(currentTour, "steepest", "edges")
+        
+        IF Cost(currentTour) < Cost(bestTour) THEN
+            bestTour = currentTour
+
+    RETURN bestTour
+END FUNCTION
 
 
 
+FUNCTION Destroy_Subpaths(tour, targetSize)
+    removedNodes = empty set
+    WHILE size(removedNodes) < targetSize
+        startIdx = Random(0, size(tour) - 1)
+        pathLen = 2 + Random(0, 3)  
+        FOR i FROM 0 TO pathLen - 1
+            idx = (startIdx + i) MOD size(tour)
+            Add tour[idx] to removedNodes
+            IF size(removedNodes) >= targetSize THEN BREAK
+
+    partialTour = empty list
+    FOR EACH node IN tour
+        IF node NOT IN removedNodes THEN
+            Append node TO partialTour
+
+    RETURN partialTour
+END FUNCTION
+
+
+FUNCTION Repair_Regret(partialTour, instance)
+    WHILE size(partialTour) < instance.K
+        candidates = empty list
+        FOR EACH node NOT IN partialTour
+            bestInc, bestPos = CalculateBestInsertion(node, partialTour)
+            secondInc = CalculateSecondBestInsertion(node, partialTour)
+            
+            bestTotal = bestInc + node.Cost
+            secondTotal = secondInc + node.Cost
+            regret = secondTotal - bestTotal
+            score = regret - bestTotal
+            
+            Add {node, score, bestPos} TO candidates
+        
+        bestCandidate = candidate WITH MAX score
+        Insert bestCandidate.node INTO partialTour AT bestCandidate.bestPos
+
+    RETURN partialTour
+END FUNCTION
+```
 
 # Results
 
@@ -49,26 +107,25 @@ nearest integer.
 |steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:nodes_start:greedy  |70626|73004|71615.93  |
 |steepest_intra:nodes_start:random  |81322|95342|87939.335 |
-|steepest_intra:edges_start:random**  |71246|78153|73699.995 |
+|steepest_intra:edges_start:random  |71246|78153|73699.995 |
 |steepest_intra:edges_start:random with Cand mech. |73076 |85487 |77866.91 |
 |steepest_lm_intra:edges_start:random|71265 | 78247 | 73856.275|
-|ILS_intra:edges_start:random |70135 | 72831 |71094.05|
-|steepest_multi_start_intra:edges_start:random| 70518 |72995|71665.45|
+|ILS_intra:edges_start:random |70901 | 71862 |71303.60|
+|steepest_multi_start_intra:edges_start:random| 71149  |  72794 | 71299.05|
 
 ### New Methods Results
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|73877|100946|81003.805|
-|LNS_with_search_intra:edges_start:random|69646|72165|70830.13|
+|LNS_no_search_intra:edges_start:random   |  69732  |71868  | 70604.2|
+|LNS_with_search_intra:edges_start:random |  69397   |  71604 |  70453.9|
 
-
-### Number of main loops iterations
+### Number of main loop iterations
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|5|31|17.97|
-|LNS_with_search_intra:edges_start:random|1|7|2.8|
+|LNS_no_search_intra:edges_start:random    |  948     |1073   |1013.35 |
+|LNS_with_search_intra:edges_start:random  |    823   |   935 |   899.10 |
 
 
 ## Instance B
@@ -88,27 +145,26 @@ nearest integer.
 |steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
 |steepest_intra:nodes_start:greedy  |46371 | 55385 | 50201.47 |
 |steepest_intra:nodes_start:random  |55686 | 71546 | 62955.885|
-|steepest_intra:edges_start:random |45903 | 51416 | 48195.845|
+|steepest_intra:edges_start:random  |45903 | 51416 | 48195.845|
 |steepest_intra:edges_start:random with Cand. Mech. | 45798 | 52670 | 48474.64 |
 |steepest_lm_intra:edges_start:random|45941 | 51587 |48214.715 |
-|ILS_intra:edges_start:random|45250|46331|45749.15|
-|steepest_multi_start_intra:edges_start:random|46272|51158|48124.05|
-
-
+|ILS_intra:edges_start:random|45320    |46753   |45463.3|
+|steepest_multi_start_intra:edges_start:random|45405    |46222   |45767.4|
 
 ### New Methods Results
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|48815|72910|57516.195|
-|LNS_with_search_intra:edges_start:random|43830|48594|45299.75|
+|LNS_no_search_intra:edges_start:random|  44415|    46341|  45336.95|
+|LNS_with_search_intra:edges_start:random |   44012|    45376  |44511.30|
 
-### Number of main loops iterations
+
+### Number of main loop iterations
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|7|33|17.485|
-|LNS_with_search_intra:edges_start:random|1|7|2.92|
+|LNS_no_search_intra:edges_start:random     | 921     |1028    |984.35|
+|LNS_with_search_intra:edges_start:random   |   835   |  1005  |  892.30|
 
 # Paths visualization
 ## Instance A
@@ -143,19 +199,20 @@ nearest integer.
 |steepest_intra:edges_start:random   |0.039 |0.050  |0.045 |
 |steepest_intra:edges_start:random with Can. Mech. |0.008 |0.019 |0.011 |
 |steepest_lm_intra:edges_start:random|0.025|0.049|0.030|
-|ILS_intra:edges_start:random|0.053|0.297|0.09|
-|steepest_multi_start_intra:edges_start:random|10.296|10.524|10.406|
+|ILS_intra:edges_start:random|4.805 | 4.815 | 4.811|
+|steepest_multi_start_intra:edges_start:random|4.443|5.99|4.805|
+
 
 ### New Methods Results
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|0.023|0.19|0.09|
-|LNS_with_search_intra:edges_start:random|0.032|0.082|0.048|
+|LNS_no_search_intra:edges_start:random  |     4.810|     4.891|      4.840|
+|LNS_with_search_intra:edges_start:random|       4.812|     4.881|      4.832|
 
 ## Instance B
 
-| Method  | min | max | average |
+| Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
 |greedy_intra:edges_start:greedy     |0.0    |0.01    |0.004|
 |greedy_intra:edges_start:random     |0.064  |0.102   |0.081|
@@ -167,13 +224,14 @@ nearest integer.
 |steepest_intra:edges_start:random   |0.038  |0.054   |0.045|
 |steepest_intra:edges_start:random with CAn. Mech. | 0.009 |0.05 |0.012 |
 |steepest_lm_intra:edges_start:random|0.020|0.053|0.035|
-|ILS_intra:edges_start:random|0.054|0.177|0.079|
-|steepest_multi_start_intra:edges_start:random|10.358|13.195|10.869|
+|ILS_intra:edges_start:random| 4.499  |  4.515   |  4.503 |
+|steepest_multi_start_intra:edges_start:random|4.377   |  5.077    | 4.498|
+
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|LNS_no_search_intra:edges_start:random|0.035|0.181|0.088|
-|LNS_with_search_intra:edges_start:random|0.034|0.097|0.052|
+| LNS_no_search_intra:edges_start:random    | 4.499 |    4.609   |   4.554 |
+|LNS_with_search_intra:edges_start:random   |  4.501|     4.607   |   4.540|
 
 # Conclusions
 

@@ -10,7 +10,7 @@ def load_all_instances(file_path):
     return data
 
 DIR = "ass_7"
-LETTER = "B"
+LETTER = "A"
 file_path = f'{DIR}/res{LETTER}.csv'
 
 data = read_csv_file(file_path)

@@ -4,7 +4,7 @@ def read_csv_file(file_path):
     data = pd.read_csv(file_path)
     return data
 
-LETTER = "B"
+LETTER = "A"
 file_path = f'res{LETTER}.csv'
 
 

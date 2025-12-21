@@ -6,6 +6,7 @@ def read_csv_file(file_path):
 
 LETTER = "B"
 
+
 file_path = f'res{LETTER}.csv'
 
 data = read_csv_file(file_path)
