@@ -1,11 +1,100 @@
 ```
-Operator1(parent1, parent2):
-    extract edges common to both parents
-    build maximal common subpaths
-    add random single nodes until size = K
-    randomly reverse subpaths
-    concatenate subpaths
-    return offspring
+PROCEDURE Operator1(parent1, parent2)
+    n ← length(parent1)
+    targetSize ← n / 2
+
+    --------------------------------------------------
+    STEP 1: Build edge sets from both parents
+    --------------------------------------------------
+    edges1 ← empty set
+    edges2 ← empty set
+
+    FOR i ← 0 TO n-1 DO
+        a ← parent1[i]
+        b ← parent1[(i+1) mod n]
+        add (a, b) to edges1
+    END FOR
+
+    FOR i ← 0 TO n-1 DO
+        a ← parent2[i]
+        b ← parent2[(i+1) mod n]
+        add (a, b) to edges2
+    END FOR
+
+
+    --------------------------------------------------
+    STEP 2: Extract common subpaths
+    --------------------------------------------------
+    visited ← empty set
+    subpaths ← empty list of lists
+
+    FOR i ← 0 TO n-1 DO
+        start ← parent1[i]
+
+        IF start ∈ visited THEN
+            CONTINUE
+        END IF
+
+        path ← [ start ]
+        mark start as visited
+        current ← start
+
+        WHILE TRUE DO
+            nextIndex ← index of current in parent1 + 1
+
+            IF nextIndex ≥ n THEN
+                BREAK
+            END IF
+
+            next ← parent1[nextIndex]
+            edge ← (current, next)
+
+            IF edge ∈ edges1 AND edge ∈ edges2 AND next ∉ visited THEN
+                append next to path
+                mark next as visited
+                current ← next
+            ELSE
+                BREAK
+            END IF
+        END WHILE
+
+        append path to subpaths
+    END FOR
+
+
+    --------------------------------------------------
+    STEP 3: Add random single-node subpaths
+    --------------------------------------------------
+    allNodes ← set of all nodes in parent1
+    remove all visited nodes from allNodes
+
+    currentSize ← total number of nodes in subpaths
+
+    WHILE currentSize < targetSize AND allNodes is not empty DO
+        node ← randomly selected element from allNodes
+        append [node] to subpaths
+        remove node from allNodes
+        currentSize ← currentSize + 1
+    END WHILE
+
+
+    --------------------------------------------------
+    STEP 4: Randomly connect subpaths
+    --------------------------------------------------
+    randomly shuffle subpaths
+
+    offspring ← empty list
+
+    FOR each path in subpaths DO
+        IF random number < 0.5 THEN
+            reverse path
+        END IF
+        append path to offspring
+    END FOR
+
+    RETURN offspring
+END PROCEDURE
+
 ```
 ```
 GreedyRegretStart(instance, start_node):
