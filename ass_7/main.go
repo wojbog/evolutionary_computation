@@ -572,6 +572,35 @@ func RunLocalSearch(inst *Instance, tour []int, inSel []bool, mode string, intra
 	return tourCopy, inCopy, evalsTotal, improvements
 }
 
+func destroy2(inst *Instance, tour []int, inSel []bool, destroySize int, rnd *rand.Rand) (newTour []int, newInSel []bool) {
+	// destroy random subpaths of random lengths from 3-6 lenhgt.  togeter 30% of nodes removed
+	K := inst.K
+	N := inst.N
+	
+	removed := make(map[int]bool)
+	for len(removed) < destroySize {
+		startIdx := rnd.Intn(len(tour))
+		pathLen := 2 + rnd.Intn(3) // length 3-6
+		for i := 0; i < pathLen; i++ {
+			idx := mod(startIdx+i, len(tour))
+			removed[idx] = true
+			if len(removed) >= destroySize {
+				break
+			}
+		}
+	}
+	
+	newTour = make([]int, 0, K-destroySize)
+	newInSel = make([]bool, N)
+	for i, v := range tour {
+		if !removed[i] {
+			newTour = append(newTour, v)
+			newInSel[v] = true
+		}
+	}
+	return newTour, newInSel
+}
+
 func destroy(inst *Instance, tour []int, inSel []bool, destroySize int, rnd *rand.Rand) (newTour []int, newInSel []bool) {
 	K := inst.K
 	N := inst.N
@@ -667,25 +696,24 @@ func repairGreedyRegret(inst *Instance, partialTour []int, inSel []bool, rnd *ra
 
 func runLNS(inst *Instance, tour []int, inSel []bool, mode string, lnsWithSearch bool, rnd *rand.Rand) (finalTour []int, finalInSel []bool, evalsTotal int, improvements int, iterations int) {
 	expTime := time.Now()
-	end_time := expTime.Add(4*time.Second + 800*time.Millisecond)
+	end_time := expTime.Add(4*time.Second + 700*time.Millisecond)
 
 	if lnsWithSearch {
 		tour, inSel, _, _ = RunLocalSearch(inst, tour, inSel, "steepest", "edges", rnd)
 	}
 
-	iter := 0
+	bestObj := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
+	bestTour := make([]int, len(tour))
+	copy(bestTour, tour)
+	bestInSel := make([]bool, len(inSel))
+	copy(bestInSel, inSel)
 
+	iter := 0
 	for ; expTime.Before(end_time); expTime = time.Now() {
 		destroySize := inst.K / 3
 
-		objBefore := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
-
-		tourBeforeDestoy := make([]int, len(tour))
-		copy(tourBeforeDestoy, tour)
-		inSelBeforeDestroy := make([]bool, len(inSel))
-		copy(inSelBeforeDestroy, inSel)
-
-		tour, inSel = destroy(inst, tour, inSel, destroySize, rnd)
+		// tour, inSel = destroy(inst, tour, inSel, destroySize, rnd)
+		tour, inSel = destroy2(inst, tour, inSel, destroySize, rnd)
 		tour, inSel = repairGreedyRegret(inst, tour, inSel, rnd)
 
 		if lnsWithSearch {
@@ -694,11 +722,15 @@ func runLNS(inst *Instance, tour []int, inSel []bool, mode string, lnsWithSearch
 
 		objAfter := TourLength(inst.Dist, tour) + SelectedCosts(inst.Nodes, tour)
 
-		if objAfter >= objBefore {
-			return tourBeforeDestoy, inSelBeforeDestroy, evalsTotal, improvements, iter
+		if objAfter < bestObj {
+			bestObj = objAfter
+			copy(bestTour, tour)
+			copy(bestInSel, inSel)
 		}
-		iter++;
+		
+		iter++
 	}
+	return tour, inSel, evalsTotal, improvements, iter
 }
 
 func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
@@ -797,7 +829,7 @@ func runMethods(inst *Instance, runs int, seed int64, outPath string) error {
 func main() {
 	inPath := flag.String("in", "", "input CSV file path (rows: x,y,cost)")
 	outPath := flag.String("out", "result.csv", "output CSV results path")
-	runs := flag.Int("runs", 200, "number of runs per method")
+	runs := flag.Int("runs", 20, "number of runs per method")
 	seed := flag.Int64("seed", time.Now().UnixNano(), "random seed")
 	flag.Parse()
 	if *inPath == "" || *outPath == "" {

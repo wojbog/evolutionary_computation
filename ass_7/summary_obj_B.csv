@@ -1,3 +1,3 @@
 method,min_obj,max_obj,mean_obj
-LNS_no_search_intra:edges_start:random,48815,72910,57516.195
-LNS_with_search_intra:edges_start:random,43830,48594,45299.75
+LNS_no_search_intra:edges_start:random,44415,46341,45336.95
+LNS_with_search_intra:edges_start:random,44012,45376,44511.3
