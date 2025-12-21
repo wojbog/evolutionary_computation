@@ -10,9 +10,8 @@ def load_all_instances(file_path):
     return data
 
 DIR = "ass_10"
-LETTER = "A"
+LETTER = "B"
 file_path = f'{DIR}/res{LETTER}.csv'
-
 
 data = read_csv_file(file_path)
 print(data.head())
@@ -71,7 +70,7 @@ def visualize_best_paths(data, instances):
         method_data = data[data['method'] == method]
         best_row = method_data.loc[method_data['objective'].idxmin()]
         path = list(map(int, best_row['final_selected'].split(';')))
-        title = f"Best path Own Method"
+        title = f"Best path ({method}): objective={best_row['objective']:.1f}"
 
         plt.figure(figsize=(10, 6))
         plt.scatter(coords[:, 0], coords[:, 1], color="blue", s=20)
