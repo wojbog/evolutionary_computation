@@ -298,4 +298,4 @@ RunMethod(instance):
 
 # Conclusions
 
-In this assignment we explored influence of greedy regret initialization for the evolutionary algorithm, as it performed the best among all approaches. The results indicate that the hybrid evolutionary algorithm with greedy regret initialization outperforms other methods in terms of solution quality for both instances A and B. The best solutions obtained by this method are lower than those achieved by the other approaches, demonstrating its effectiveness in solving the problem at hand.
+In this assignment we explored influence of greedy heuristics initialization for the evolutionary algorithm. The results indicate that the hybrid evolutionary algorithm with greedy regret initialization outperforms other methods in terms of solution quality for both instances A and B. The best solutions obtained by this method are lower than those achieved by the other approaches, demonstrating its effectiveness in solving the problem at hand.
