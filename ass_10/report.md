@@ -118,16 +118,29 @@ CleanPopulation(instance, population, targetSize):
         generate new LS-improved random solutions
     return population
 ```
+
 ```
 GenerateInitialPopulation(instance, size):
+    population = empty list
     while population size < size:
-        with probability 0.8:
-            greedy regret construction
-        else:
-            random + local search
-    remove duplicates
-    return population
+        start_node = random node
+        initalization_id = choice from {regret, alfa_beta, nn_anywhere, nn_end} 
+        if initalization_id == regret:
+            solution, inSelected = GreedyRegret(instance, start_node)
+        else if initalization_id == alfa_beta:
+            alpha, beta = random values
+            solution, inSelected = AlfaBeta(start_node, instance, alpha=1, beta=1)
+        else if initalization_id == nn_anywhere:
+            solution, inSelected = NearestNeighborAnywhere(start_node, instance)
+        else if initalization_id == nn_end:
+            solution, inSelected = NearestNeighborEnd(start_node, instance)
+
+        population.append(LocalSearch(instance, solution, inSelected))
+
+        remove_dupliacates(population)
+
 ```
+
 
 ```
 Main Loop
@@ -186,7 +199,7 @@ RunMethod(instance):
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|GeneticWithRegret  |  69620  |  70145 | 69853.05|
+|GeneticWithHeuristics  |  69620  |  70145 | 69853.05|
 
 
 ## Instance B
@@ -221,18 +234,17 @@ RunMethod(instance):
 
 | Method  | best | worst | average|
 |----------|----:|:-------:|:---------:|
-|GeneticWithRegret|    44128|    45207|   44627.6|
+|GeneticWithHeuristics|    43828|    44907|   44327.6|
 
 
 
 # Paths visualization
 ## Instance A
 
-![](./best_path_Operator1_A.png
+![](./best_path_Operator1_A.png)
 
 ## Instance B
 
-### Operator 1
 ![](./best_path_Operator1_B.png)
 
 # Time
@@ -259,7 +271,7 @@ RunMethod(instance):
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-|GeneticWithRegret    | - | - | as MSLS |
+|GeneticWithHeuristics    | - | - | as MSLS |
 
 ## Instance B
 
@@ -282,7 +294,7 @@ RunMethod(instance):
 
 | Method  | min | max | average|
 |----------|----:|:-------:|:---------:|
-| GeneticWithRegret   | - | - | as MSLS |
+| GeneticWithHeuristics   | - | - | as MSLS |
 
 # Conclusions
 
